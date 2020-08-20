@@ -8,15 +8,14 @@
  *
  * */
 
-const Splitter = artifacts.require("Splitter");
+const Splitter = artifacts.require("splitter");
 const chai = require("./chaiSetup.js");
 const BN = web3.utils.BN;
 const expect = chai.expect;
 
 require("dotenv").config({path: "../.env"});
 
-
-contract TestSplitter, async (accounts) => {
+contract("Splitter", async (accounts) => {
 
     const [aliceAccount, bobAccount, carolAccount] = accounts;
 
@@ -69,4 +68,4 @@ contract TestSplitter, async (accounts) => {
 
     });
 
-}
+});
