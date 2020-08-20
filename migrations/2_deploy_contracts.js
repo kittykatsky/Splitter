@@ -1,5 +1,6 @@
-var SimpleStorage = artifacts.require("./SimpleStorage.sol");
+var splitter = artifacts.require("./splitter.sol");
 
-module.exports = function(deployer) {
-  deployer.deploy(SimpleStorage);
+module.exports = async function(deployer) {
+    let addr = await web3.eth.getAccounts();
+    await deployer.deploy(splitter);
 };
