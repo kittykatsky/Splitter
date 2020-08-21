@@ -35,18 +35,18 @@ contract("Splitter test", async (accounts) => {
         return expect(balanceOfSplitter).to.be.a.bignumber.equal(new BN(0));
     });
 
-    it("Should not have any recievers on deployment", async () => {
+    it("Should not have any payees on deployment", async () => {
         let splitter = await Splitter.deployed();
-        return expect(splitter.receiverCount() == 0);
+        return expect(splitter.payeeCount == 0);
     });
 
-    it("Should only be possible for the owner to add recievers", async () => {
+    it("Should only be possible for the owner to add payees", async () => {
         let splitter = await Splitter.deployed();
-        expect(splitter.receiverCount() == 0);
-        expect(splitter.addReciever(bobAccount, {from: aliceAccount})).to.be.fulfilled;
-        expect(splitter.receiverCount() == 1);
-        expect(splitter.addReciever(carolAccount, {from: bobAccount})).to.be.rejected;
-        return expect(splitter.receiverCount() == 1);
+        expect(splitter.payeeCount == 0);
+        expect(splitter.addPayee(bobAccount, {from: aliceAccount})).to.be.fulfilled;
+        expect(splitter.payeeCount == 1);
+        expect(splitter.addPayee(carolAccount, {from: bobAccount})).to.be.rejected;
+        return expect(splitter.payeeCount == 1);
     });
 
     it("Should only be possible for the owner to send ETH to the contract", async () => {
@@ -65,53 +65,35 @@ contract("Splitter test", async (accounts) => {
     // it("All ETH sent to the contract should default to the contract", async () =>{
     // });
 
-    it("Should only be possible for the owner to split ETH to the recievers", async () =>{
+    it("Should only be possible for the owner to split ETH to the payees", async () =>{
         let splitter = await Splitter.deployed();
-        await splitter.addReciever(bobAccount, {from: aliceAccount});
-        expect(splitter.sendTransaction({
-            from: aliceAccount, value: web3.utils.toWei("1", "ether")})).to.be.fulfilled;
+
+        //expect(splitter.performSplit({from: aliceAccount})).to.be.rejected();
+        expect(splitter.sendTransaction(
+            {from: aliceAccount, value: web3.utils.toWei("1", "ether")})).to.be.fulfilled;
+        return expect(splitter.performSplit({from: aliceAccount})).to.be.fulfilled;
+    });
+
+    it("All ether should be split equally between the payees", async () => {
+        let splitter = await Splitter.deployed();
+
+        expect(splitter.addPayee(carolAccount, {from: aliceAccount})).to.be.fulfilled;
+        await splitter.sendTransaction({from: aliceAccount, value: web3.utils.toWei("1", "ether")});
+
         let balanceOfSplitter = await web3.eth.getBalance(splitter.address);
-        let noOfRec = await splitter.recieverCount();
-        let splitAmount = balanceOf / noOfRec
-        let recOriginal = await splitter.getReceiverBalance(bobAccount);
-        expect(splitter.performSplit({from: aliceAccount})).to.be.fulfilled;
-        let recBalance = await splitter.getReceiverBalance(bobAccount) - recOriginal;
-        return expect(splitAmount).to.be.a.bignumber.equal(new BN(recBalance));
-    });
+        let origBalance = await web3.eth.getBalance(bobAccount);
+        let noOfRec = await splitter.viewPayeeCount();
+        let splitAmount = (parseInt(balanceOfSplitter) / noOfRec) + parseInt(origBalance);
 
-    it("All ether should be split equally between the recievers", async () => {
-        let splitter = await Splitter.deployed();
-        await splitter.addReciever(bobAccount, {from: aliceAccount});
-        await splitter.addReciever(carolAccount, {from: aliceAccount});
-        let noOfRec = await splitter.recieverCount();
-        let splitAmount = balanceOf / noOfRec
-        // expect(splitter.sendTransaction({from: aliceAccount, value: web3.utils.toWei("1", "ether")})).to.be.fulfilled;
-        expect(splitter.performSplit({from: aliceAccount})).to.be.fulfilled;
-        let balanceOfSplitter = await splitter.balanceOf(Splitter.address);
-        let balanceOfBob = await splitter.getReceiverBalance(carolAccount);
-        let balanceOfCarol = await splitter.getReceiverBalance(bobAccount);
-        expect(carolAccount).to.be.a.bignumber.equal(new BN(splitAmount));
-        expect(bobAccount).to.be.a.bignumber.equal(new BN(splitAmount));
-        return expect(balanceOfSplitter).to.be.a.bignumber.equal(0);
-    });
+        await splitter.performSplit({from: aliceAccount});
 
-    it("Should be possible for a reciever to withdraw their assigned ammount", async () => {
-        let splitter = await Splitter.deployed();
-        await splitter.addReciever(bobAccount, {from: aliceAccount});
-        await splitter.addReciever(carolAccount, {from: aliceAccount});
-        // expect(splitter.sendTransaction({from: aliceAccount, value: web3.utils.toWei("1", "ether")})).to.be.fulfilled;
-        expect(splitter.performSplit({from: aliceAccount})).to.be.fulfilled;
-        expect(splitter.withdrawMoney('.5', {from: bobAccount})).to.be.fulfilled;
-    });
+        balanceOfSplitter = web3.eth.getBalance(splitter.address);
+        console.log(await web3.eth.getBalance(bobAccount))
+        console.log(splitAmount)
+        bobBalance = web3.eth.getBalance(bobAccount)
 
-    it("Shouldnt be possible for a reciever to withdraw more than their allotted amount", async () => {
-        let splitter = await Splitter.deployed();
-        await splitter.addReciever(bobAccount, {from: aliceAccount});
-        expect(splitter.withdrawMoney('.5', {from: bobAccount})).to.be.rejected;
-    });
+        //expect(bobBalance).to.eventually.be.a.bignumber.equal(new BN(splitAmount));
 
-    it("Should return all assigned/non assigned ether to its respecitve reciever/owner upon destruction", async () => {
-        let splitter = await Splitter.deployed();
+        return expect(balanceOfSplitter).to.eventually.be.a.bignumber.equal(new BN(0));
     });
-
 });
