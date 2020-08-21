@@ -7,20 +7,40 @@ contract splitter is Ownable{
 
     using SafeMath for uint;
 
-    mapping(address => bool) public receiver;
-    mapping(address => uint) public receiverFunds;
+    address payable[] payee;
+    mapping(address => bool) payeeMap;
+    uint payeeCount;
 
-    uint8 public receiverCount;
-
-    event addedReciever();
+    event addedPayee();
     event MoneySent();
     event MoneyRecieved();
     event split();
 
-    function addReciever(address _who) public onlyOwner {
-        receiver[_who] = true;
-        receiverCount += 1;
-        emit addedReciever();
+    function addPayee(address payable _who) public onlyOwner {
+        require(!payeeMap[_who], "payee already exists");
+        payee.push();
+        payee[payeeCount] = _who;
+        payeeMap[_who] = true;
+        payeeCount += 1;
+        emit addedPayee();
+    }
+
+    function performSplit() public onlyOwner {
+        require(address(this).balance > 0, "Account empty");
+        require(payeeCount > 0, "No Payees");
+        
+        uint payout = address(this).balance.div(payee.length);
+        for (uint8 i = 0; i < payee.length; i++) {
+            sendMoney(payee[i], payout);
+        }
+    }
+
+    function sendMoney(address payable _who, uint amount) private onlyOwner {
+        _who.transfer(amount);
+    }
+
+    function viewPayeeCount() public view returns (uint){
+        return payeeCount;
     }
 
     receive() external payable {
