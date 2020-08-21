@@ -53,12 +53,12 @@ contract("Splitter test", async (accounts) => {
         let splitter = await Splitter.deployed();
         // truffle issue casues crash - have to comment out this until the promise gets fulfilled
         // https://github.com/trufflesuite/truffle/issues/2497
-        expect(splitter.sendTransaction({
-            from: aliceAccount, value: web3.utils.toWei("1", "ether")})).to.be.fulfilled;
+        await splitter.sendTransaction({
+            from: aliceAccount, value: web3.utils.toWei("1", "ether")});
         expect(splitter.sendTransaction({
             from: bobAccount, value: web3.utils.toWei("1", "ether")})).to.be.rejected;
-        let balanceOfSplitter = await web3.eth.getBalance(splitter.address);
-        return expect(web3.utils.fromWei(balanceOfSplitter, "ether")).to.be.a.bignumber.equal(new BN(1));
+        balanceOfSplitter = web3.eth.getBalance(splitter.address);
+        return expect(balanceOfSplitter).to.eventually.be.a.bignumber.equal(new BN(web3.utils.toWei("1", "ether")));
     });
 
     // Ultimately same test as above
