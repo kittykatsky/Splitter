@@ -15,3 +15,22 @@ We purposely left a lot to be decided. Such description approximates how your hu
 ----------Project
 
 TODO
+
+----------Dependencies
+
+Truffle v5.1.14-nodeLTS.0 (core: 5.1.13)
+Solidity - ^0.6.0 (solc-js)
+Node v12.18.3
+Web3.js v1.2.1
+
+npm
+├── @openzeppelin/contracts@3.0.0
+├── chai@4.2.0
+├── chai-as-promised@7.1.1
+├── chai-bn@0.2.1
+├── dotenv@8.2.0
+├── ganache-cli@6.10.1
+├── package_name@1.0.2
+├── solc@0.7.0
+├── truffle@5.1.41
+└── web3@1.2.11
