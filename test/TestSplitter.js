@@ -68,10 +68,15 @@ contract("Splitter test", async (accounts) => {
     it("Should only be possible for the owner to split ETH to the payees", async () =>{
         let splitter = await Splitter.deployed();
 
-        //expect(splitter.performSplit({from: aliceAccount})).to.be.rejected();
         expect(splitter.sendTransaction(
             {from: aliceAccount, value: web3.utils.toWei("1", "ether")})).to.be.fulfilled;
         return expect(splitter.performSplit({from: aliceAccount})).to.be.fulfilled;
+    });
+
+    it("Should only be possible to perform split when theres money in spliter account", async () =>{
+        let splitter = await Splitter.deployed();
+
+        return expect(splitter.performSplit({from: aliceAccount})).to.be.rejected;
     });
 
     it("All ether should be split equally between the payees", async () => {
@@ -92,6 +97,7 @@ contract("Splitter test", async (accounts) => {
         console.log(splitAmount)
         bobBalance = web3.eth.getBalance(bobAccount)
 
+        // This test fails even though the two ballances match
         //expect(bobBalance).to.eventually.be.a.bignumber.equal(new BN(splitAmount));
 
         return expect(balanceOfSplitter).to.eventually.be.a.bignumber.equal(new BN(0));
