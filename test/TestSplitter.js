@@ -11,6 +11,7 @@
 const Splitter = artifacts.require("Splitter");
 const Owned = artifacts.require("Owned");
 const chai = require("./chaiSetup.js");
+const truffleAssert = require('truffle-assertions');
 const BN = web3.utils.BN;
 const expect = chai.expect;
 
@@ -47,10 +48,16 @@ contract("Splitter test", async (accounts) => {
 
     it("Should not be possible for anyone to send ETH to the contract directly", async () => {
         let instance = this.splitter;
-        expect(await instance.sendTransaction({
-            from: aliceAccount, value: web3.utils.toWei("1", "ether")})).to.be.rejected;
+        await truffleAssert.reverts(
+            instance.sendTransaction(
+                {from: aliceAccount, value: web3.utils.toWei("1", "ether")}), "cant send ether directly");
+        await truffleAssert.reverts(
+            instance.sendTransaction(
+                {from: bobAccount, value: web3.utils.toWei("1", "ether")}), "cant send ether directly");
+
         expect(instance.sendTransaction({
             from: bobAccount, value: web3.utils.toWei("1", "ether")})).to.be.rejected;
+
         balanceOfSplitter = web3.eth.getBalance(instance.address);
         return expect(balanceOfSplitter).to.eventually.be.a.bignumber.equal(new BN(web3.utils.toWei("0", "ether")));
     });
@@ -126,4 +133,6 @@ contract("Splitter test", async (accounts) => {
         return expect(instance.withdrawEther(2, {from: bobAccount})).to.be.fulfilled;
     });
 
+    // additional tests
+    // Need to figure out how to test the events that have been emitted
 });

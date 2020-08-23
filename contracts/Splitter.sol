@@ -36,6 +36,9 @@ contract Splitter is Owned{
         msg.sender.transfer(amount);
         emit EtherWithdrawnEvent(msg.sender, amount);
         return true;
+    }
 
+    receive () external payable {
+        revert("cant send ether directly");
     }
 }
