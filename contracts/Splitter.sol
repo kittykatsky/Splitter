@@ -63,6 +63,7 @@ contract Splitter is Owned{
 
     /// Fallback function 
     /// @dev ensures that no ether can be sent directly to contract
+    receive() external payable {
         revert("cant send ether directly");
     }
 }
