@@ -29,7 +29,12 @@ contract Splitter is Owned{
         emit SplitDoneEvent(msg.sender, payee1, payee2, payout);
     }
 
-    function withdrawEther() public returns (bool) {
+    function withdrawEther(uint amount) public returns (bool) {
+        require(payeeBalance[msg.sender] > 0, "No Ether in splitter");
+        require(amount <= payeeBalance[msg.sender], "More Ether requested than available");
+        payeeBalance[msg.sender] -= amount;
+        msg.sender.transfer(amount);
+        emit EtherWithdrawnEvent(msg.sender, amount);
         return true;
 
     }
