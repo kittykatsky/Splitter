@@ -8,8 +8,8 @@
  *
  * */
 
-const Splitter = artifacts.require("splitter");
-const Owner = artifacts.require("splitter");
+const Splitter = artifacts.require("Splitter");
+const Owned = artifacts.require("Owned");
 const chai = require("./chaiSetup.js");
 const BN = web3.utils.BN;
 const expect = chai.expect;
@@ -22,69 +22,80 @@ contract("Splitter test", async (accounts) => {
 
     beforeEach(async () => {
         this.splitter = await Splitter.new();
-     }
+        assert.equal(await web3.eth.getBalance(this.splitter.address), 0)
+     });
+
+    // testing ownership
+    it("Owned contract should be owned by its deployer", async () => {
+        let ownerInstance = await Owned.deployed();
+        return expect(await ownerInstance.getOwner()).to.equal(aliceAccount)
+        });
 
     it("Should have the deployer as its owner", async () => {
-        let instance = await Splitter./deployed();
-        return expect(instance.owner == aliceAccount)
+        let instance = this.splitter;
+        return expect(await instance.getOwner()).to.equal(aliceAccount)
     });
 
+    // testing construction
     it("Should not have have any ETH on deployment", async () => {
         let instance = this.splitter;
-        let balanceOfSplitter = await web3.eth.getBalance(instance.address);
-        return expect(balanceOfSplitter).to.be.a.bignumber.equal(new BN(0));
+        let balanceOfSplitter = web3.eth.getBalance(instance.address);
+        return expect(balanceOfSplitter).to.eventually.be.a.bignumber.equal(new BN(0));
     });
 
-    it("Should only be possible for the owner to send ETH to the contract", async () => {
+    // testing splitter
+    it("Should not be possible for anyone to send ETH to the contract directly", async () => {
         let instance = this.splitter;
-        // truffle issue casues crash - have to comment out this until the promise gets fulfilled
-        // https://github.com/trufflesuite/truffle/issues/2497
-        await instance.sendTransaction({
-            from: aliceAccount, value: web3.utils.toWei("1", "ether")});
+        expect(await instance.sendTransaction({
+            from: aliceAccount, value: web3.utils.toWei("1", "ether")})).to.be.rejected;
         expect(instance.sendTransaction({
             from: bobAccount, value: web3.utils.toWei("1", "ether")})).to.be.rejected;
         balanceOfSplitter = web3.eth.getBalance(instance.address);
-        return expect(balanceOfSplitter).to.eventually.be.a.bignumber.equal(new BN(web3.utils.toWei("1", "ether")));
+        return expect(balanceOfSplitter).to.eventually.be.a.bignumber.equal(new BN(web3.utils.toWei("0", "ether")));
     });
 
-    // Ultimately same test as above
-    // it("All ETH sent to the contract should default to the contract", async () =>{
-    // });
+
+    it("Should not be possible to split if no ETH sent with split", async () =>{
+        let instance = this.splitter;
+
+        return expect(instance.performSplit(bobAccount, carolAccount, {from: aliceAccount value: 0})).to.be.rejected;
+    });
+
+
+    it("Should not be possible to split if accounts not correctly specified", async () =>{
+        let instance = this.splitter;
+
+        expect(instance.performSplit(null, carolAccount, {from: aliceAccount})).to.be.rejected;
+        return expect(instance.performSplit(bobAccount, null, {from: aliceAccount})).to.be.rejected;
+    });
 
     it("Should only be possible for the owner to split ETH to the payees", async () =>{
         let instance = this.splitter;
 
-        expect(instance.sendTransaction(
-            {from: aliceAccount, value: web3.utils.toWei("1", "ether")})).to.be.fulfilled;
-        return expect(instance.performSplit({from: aliceAccount})).to.be.fulfilled;
-    });
-
-    it("Should only be possible to perform split when theres money in spliter account", async () =>{
-        let instance = this.splitter;
-
-        return expect(instance.performSplit({from: aliceAccount})).to.be.rejected;
+        expect(instance.performSplit(
+            bobAccount, carolAccount, {from: bobAccount, value: new BN(5)}
+        )).to.be.fulfilled;
+        return expect(instance.performSplit(
+            bobAccount, carolAccount, {from: aliceAccount, value: new BN(5)}
+        )).to.be.fulfilled;
     });
 
     it("All ether should be split equally between the payees", async () => {
         let instance = this.splitter;
 
-        expect(instance.addPayee(carolAccount, {from: aliceAccount})).to.be.fulfilled;
-        await instance.sendTransaction({from: aliceAccount, value: web3.utils.toWei("1", "ether")});
+        let splitAmount = (5 / 2) + parseInt(origBalance);
 
-        let balanceOfSplitter = await web3.eth.getBalance(instance.address);
-        let origBalance = await web3.eth.getBalance(bobAccount);
-        let noOfRec = await instance.viewPayeeCount();
-        let splitAmount = (parseInt(balanceOfSplitter) / noOfRec) + parseInt(origBalance);
-
-        await instance.performSplit({from: aliceAccount});
+        await instance.performSplit(
+            bobAccount, carolAccount, {from: bobAccount, value: new BN(5)}
+        )
 
         balanceOfSplitter = web3.eth.getBalance(instance.address);
         console.log(await web3.eth.getBalance(bobAccount))
         console.log(splitAmount)
-        bobBalance = web3.eth.getBalance(bobAccount)
 
         // This test fails even though the two ballances match
         //expect(bobBalance).to.eventually.be.a.bignumber.equal(new BN(splitAmount));
+        assert.equal(await web3.eth.getBalance(bobAccount), splitAmount)
 
         return expect(balanceOfSplitter).to.eventually.be.a.bignumber.equal(new BN(0));
     });
