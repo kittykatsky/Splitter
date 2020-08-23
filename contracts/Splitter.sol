@@ -1,9 +1,9 @@
 pragma solidity ^0.6.0;
 
-import "@openzeppelin/contracts/access/Ownable.sol";
+import "./Owned.sol";
 import "@openzeppelin/contracts/math/SafeMath.sol";
 
-contract splitter is Ownable{
+contract Splitter is Owned{
 
     using SafeMath for uint;
 
@@ -44,18 +44,8 @@ contract splitter is Ownable{
     }
 
     receive() external payable {
-        require(msg.sender == owner(), "Only owner is allowed to deposit");        
+        require(msg.sender == owner, "Only owner is allowed to deposit");        
         emit MoneySent();
-    }
-
-    function renounceOwnership() public onlyOwner override {
-         revert("not possible to renounce ownership");
-          
-    }
-
-    function transferOwnership(address newOwner) public onlyOwner override {
-         revert("not possible to change ownership");
-          
     }
 
 }
