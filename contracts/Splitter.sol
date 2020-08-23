@@ -7,45 +7,27 @@ contract Splitter is Owned{
 
     using SafeMath for uint;
 
-    address payable[] payee;
-    mapping(address => bool) payeeMap;
-    uint payeeCount;
+    mapping(address => uint) public payeeBalance;
 
-    event addedPayee();
-    event MoneySent();
     event MoneyRecieved();
-    event split();
+    event SplitDone();
 
-    function addPayee(address payable _who) public onlyOwner {
-        require(!payeeMap[_who], "payee already exists");
-        payee.push();
-        payee[payeeCount] = _who;
-        payeeMap[_who] = true;
-        payeeCount += 1;
-        emit addedPayee();
-    }
+    function performSplit(address payable payee1, address payable payee2) public payable onlyOwner {
+        require(msg.value > 0, "No ether sent for split");
+        require(payee1 != payee2, "only one payee specified");
+        require(payee1 != msg.sender && payee2 != msg.sender, "sender can't be payee");
+        require(payee1 != address(0x0) && payee2 != address(0x0), "incorrect payee specified");
 
-    function performSplit() public onlyOwner {
-        require(address(this).balance > 0, "Account empty");
-        require(payeeCount > 0, "No Payees");
+        uint payout = msg.value.div(2);
+        payeeBalance[payee1] += payout;
+        payeeBalance[payee2] += payout;
         
-        uint payout = address(this).balance.div(payee.length);
-        for (uint8 i = 0; i < payee.length; i++) {
-            sendMoney(payee[i], payout);
-        }
+        //dummy event atm
+        emit SplitDone();
     }
 
-    function sendMoney(address payable _who, uint amount) private onlyOwner {
-        _who.transfer(amount);
-    }
+    function withdrawEther() public returns (bool) {
+        return true;
 
-    function viewPayeeCount() public view returns (uint){
-        return payeeCount;
     }
-
-    receive() external payable {
-        require(msg.sender == owner, "Only owner is allowed to deposit");        
-        emit MoneySent();
-    }
-
 }
