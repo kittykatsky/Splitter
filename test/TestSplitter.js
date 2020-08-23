@@ -84,7 +84,8 @@ contract("Splitter test", async (accounts) => {
         let instance = this.splitter;
         origBalance = await web3.eth.getBalance(bobAccount);
 
-        let splitAmount = (5 / 2)// + parseInt(origBalance);
+        let splitAmount = Math.floor(5 / 2)// + parseInt(origBalance);
+        let leftOver = 5 % 2;
 
         await instance.performSplit(
             bobAccount, carolAccount, {from: aliceAccount, value: new BN(5)}
@@ -96,10 +97,9 @@ contract("Splitter test", async (accounts) => {
 
         // This test fails even though the two ballances match
         //expect(bobBalance).to.eventually.be.a.bignumber.equal(new BN(splitAmount));
-        console.log(await instance.payeeBalance.call(bobAccount, {from: aliceAccount}))
-        console.log(splitAmount)
         assert.equal(await instance.payeeBalance.call(bobAccount, {from: aliceAccount}), splitAmount)
         assert.equal(await instance.payeeBalance.call(carolAccount, {from: aliceAccount}), splitAmount)
+        assert.equal(await instance.leftOver.call({from: aliceAccount}), leftOver)
 
         return expect(balanceOfSplitter).to.eventually.be.a.bignumber.equal(new BN(5));
     });

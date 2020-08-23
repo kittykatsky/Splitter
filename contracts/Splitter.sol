@@ -8,6 +8,7 @@ contract Splitter is Owned{
     using SafeMath for uint;
 
     mapping(address => uint) public payeeBalance;
+    uint public leftOver;
 
     event MoneyRecieved();
     event SplitDone();
@@ -18,9 +19,12 @@ contract Splitter is Owned{
         require(payee1 != msg.sender && payee2 != msg.sender, "sender can't be payee");
         require(payee1 != address(0x0) && payee2 != address(0x0), "incorrect payee specified");
 
-        uint payout = msg.value.div(2);
-        payeeBalance[payee1] += payout;
-        payeeBalance[payee2] += payout;
+        uint payout = msg.value.add(leftOver);
+        leftOver = payout.mod(2);
+        payout = payout.div(2);
+
+        payeeBalance[payee1] = payeeBalance[payee1].add(payout);
+        payeeBalance[payee2] = payeeBalance[payee2].add(payout);
         
         //dummy event atm
         emit SplitDone();
