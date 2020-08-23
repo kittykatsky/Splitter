@@ -10,8 +10,8 @@ contract Splitter is Owned{
     mapping(address => uint) public payeeBalance;
     uint public leftOver;
 
-    event MoneyRecieved();
-    event SplitDone();
+    event EtherWithdrawnEvent(address indexed sender, uint amount);
+    event SplitDoneEvent(address indexed sender, address indexed payee1, address indexed payee2, uint amount);
 
     function performSplit(address payable payee1, address payable payee2) public payable onlyOwner {
         require(msg.value > 0, "No ether sent for split");
@@ -26,8 +26,7 @@ contract Splitter is Owned{
         payeeBalance[payee1] = payeeBalance[payee1].add(payout);
         payeeBalance[payee2] = payeeBalance[payee2].add(payout);
         
-        //dummy event atm
-        emit SplitDone();
+        emit SplitDoneEvent(msg.sender, payee1, payee2, payout);
     }
 
     function withdrawEther() public returns (bool) {
