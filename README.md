@@ -16,6 +16,20 @@ We purposely left a lot to be decided. Such description approximates how your hu
 
 TODO
 
+----------Run
+
+**Prerequisite**
+
+```bash
+ganache-cli -i 5777
+```
+
+**Test**
+
+```bash
+truffle test --network development
+```
+
 ----------Dependencies
 
 Truffle v5.1.14-nodeLTS.0 (core: 5.1.13)
