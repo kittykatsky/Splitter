@@ -12,8 +12,8 @@ contract Splitter is Owned{
     mapping(address => uint) public payeeBalance;
     uint public leftOver;
 
-    event EtherWithdrawnEvent(address indexed sender, uint amount);
-    event SplitDoneEvent(address indexed sender, address indexed payee1, address indexed payee2, uint amount);
+    event LogEtherWithdrawnEvent(address indexed sender, uint amount);
+    event LogSplitDoneEvent(address indexed sender, address indexed payee1, address indexed payee2, uint amount);
 
     /// Split funds between payees
     /// @param payee1 - first payee
@@ -39,7 +39,7 @@ contract Splitter is Owned{
         payeeBalance[payee1] = payeeBalance[payee1].add(payout);
         payeeBalance[payee2] = payeeBalance[payee2].add(payout);
         
-        emit SplitDoneEvent(msg.sender, payee1, payee2, payout);
+        emit LogSplitDoneEvent(msg.sender, payee1, payee2, payout);
     }
 
     /// Withdraw an amount of ether
@@ -56,7 +56,7 @@ contract Splitter is Owned{
         require(amount <= payeeBalance[msg.sender], "More Ether requested than available");
         payeeBalance[msg.sender] -= amount;
         msg.sender.transfer(amount);
-        emit EtherWithdrawnEvent(msg.sender, amount);
+        emit LogEtherWithdrawnEvent(msg.sender, amount);
         return true;
     }
 
