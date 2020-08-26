@@ -29,8 +29,9 @@ contract Splitter is Owned{
 
         payeeBalance[payee1] = payeeBalance[payee1].add(payout);
         payeeBalance[payee2] = payeeBalance[payee2].add(payout);
-        if leftOver > 0:
+        if (leftOver > 0) {
             payeeBalance[msg.sender] = payeeBalance[msg.sender].add(leftOver);
+        }
         
         emit LogSplitDoneEvent(msg.sender, payee1, payee2, payout);
     }
