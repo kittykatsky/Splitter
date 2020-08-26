@@ -65,9 +65,10 @@ contract("Splitter test", async (accounts) => {
     //});
 
     // testing splitter function
-    it("Should not be possible to split if no ETH sent with split", async () =>{
+    it("Should not be possible to split if 1 wei or less sent with split", async () =>{
         let instance = this.splitter;
 
+        expect(instance.performSplit(bobAccount, carolAccount, {from: aliceAccount, value: 1})).to.be.rejected;
         return expect(instance.performSplit(bobAccount, carolAccount, {from: aliceAccount, value: 0})).to.be.rejected;
     });
 
@@ -79,11 +80,17 @@ contract("Splitter test", async (accounts) => {
         return expect(instance.performSplit(bobAccount, '', {from: aliceAccount})).to.be.rejected;
     });
 
-    it("Should only be possible for the owner to split ETH to the payees", async () =>{
+    it("Should only be possible for anyone to split ETH to a pair of payees", async () =>{
         let instance = this.splitter;
 
         expect(instance.performSplit(
             bobAccount, carolAccount, {from: bobAccount, value: new BN(value)}
+        )).to.be.rejected;
+        expect(instance.performSplit(
+            aliceAccount, carolAccount, {from: bobAccount, value: new BN(value)}
+        )).to.be.fulfilled;
+        expect(instance.performSplit(
+            aliceAccount, carolAccount, {from: aliceAccount, value: new BN(value)}
         )).to.be.rejected;
         return expect(instance.performSplit(
             bobAccount, carolAccount, {from: aliceAccount, value: new BN(value)}
