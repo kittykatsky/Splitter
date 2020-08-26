@@ -3,7 +3,7 @@ pragma solidity ^0.6.0;
 contract Owned {
 
     address private owner;
-    event LogOwnershipChange(address indexed oldOwner, address indexed newOwner);
+    event LogOwnershipChange(address indexed newOwner);
 
     constructor() public {
         owner = msg.sender;
@@ -21,6 +21,6 @@ contract Owned {
     function transferOwnership(address newOwner) public onlyOwner {
         require(newOwner != address(0x0));
         owner = newOwner;
-        emit LogOwnershipChange(msg.sender, newOwner);
+        emit LogOwnershipChange(newOwner);
     }
 }

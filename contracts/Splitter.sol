@@ -29,7 +29,8 @@ contract Splitter is Owned{
 
         payeeBalance[payee1] = payeeBalance[payee1].add(payout);
         payeeBalance[payee2] = payeeBalance[payee2].add(payout);
-        payeeBalance[msg.sender] = payeeBalance[msg.sender].add(leftOver);
+        if leftOver > 0:
+            payeeBalance[msg.sender] = payeeBalance[msg.sender].add(leftOver);
         
         emit LogSplitDoneEvent(msg.sender, payee1, payee2, payout);
     }
@@ -39,9 +40,8 @@ contract Splitter is Owned{
     /// @dev allows payee to withdraw their alloted funds
 	/// @return true if succesfull
     function withdrawEther(uint amount) public returns (bool) {
-        uint payeeAmount = payeeBalance[msg.sender];
         require(amount > 0, "No Ether requested");
-        require(payeeAmount > 0, "No Ether in splitter");
+        uint payeeAmount = payeeBalance[msg.sender];
         require(amount <= payeeAmount, "More Ether requested than available");
         payeeBalance[msg.sender] = payeeAmount.sub(amount);
         emit LogEtherWithdrawnEvent(msg.sender, amount);
