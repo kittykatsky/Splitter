@@ -48,21 +48,20 @@ contract("Splitter test", async (accounts) => {
 
     //Cant get this test to work now that the fallback function revert has been removed
 
-    //it("Should not be possible for anyone to send ETH to the contract directly", async () => {
-    //    const instance = this.splitter;
-    //    await truffleAssert.reverts(
-    //        instance.sendTransaction(
-    //            {from: aliceAccount, value: web3.utils.toWei("1", "ether")}), "cant send ether directly");
-    //    await truffleAssert.reverts(
-    //        instance.sendTransaction(
-    //            {from: bobAccount, value: web3.utils.toWei("1", "ether")}), "cant send ether directly");
+    it("Should not be possible for anyone to send ETH to the contract directly", async () => {
+        const instance = this.splitter;
 
-    //    expect(instance.sendTransaction({
-    //        from: bobAccount, value: web3.utils.toWei("1", "ether")})).to.be.rejected;
+        const trx = await web3.eth.sendTransaction({to: instance.address, from: aliceAccount, value:500})
 
-    //    balanceOfSplitter = web3.eth.getBalance(instance.address);
-    //    return expect(balanceOfSplitter).to.eventually.be.a.bignumber.equal(new BN(web3.utils.toWei("0", "ether")));
-    //});
+        console.log('------------trx');
+        console.log(trx);
+        //assert(trx.receipt.status, '0x01');
+        console.log('------------trx_tx');
+        const trx_tx = await web3.eth.getTransaction(trx.tx);
+        console.log(trx_tx);
+
+
+    });
 
     // testing splitter function
     it("Should not be possible to split if 1 wei or less sent with split", async () =>{
@@ -97,16 +96,33 @@ contract("Splitter test", async (accounts) => {
         )).to.be.fulfilled;
     });
 
+    it("Multiple splits so result in adding the split values to the payees allotted amount", async () => {
+        const instance = this.splitter;
+        await instance.performSplit(
+            bobAccount, carolAccount, {from: aliceAccount, value: new BN(5)}
+        );
+
+        await instance.performSplit(
+            bobAccount, carolAccount, {from: aliceAccount, value: new BN(6)}
+        );
+
+        await instance.performSplit(
+            bobAccount, carolAccount, {from: aliceAccount, value: new BN(10)}
+        );
+
+        return assert.equal(await instance.payeeBalance.call(bobAccount, {from: aliceAccount}), 10);
+    })
+
     it("All ether should be split equally between the payees", async () => {
         const instance = this.splitter;
         origBalance = await web3.eth.getBalance(bobAccount);
 
-        let splitAmount = Math.floor(5 / 2)// + parseInt(origBalance);
+        let splitAmount = Math.floor(5 / 2);
         let leftOver = 5 % 2;
 
         await instance.performSplit(
             bobAccount, carolAccount, {from: aliceAccount, value: new BN(5)}
-        )
+        );
 
         balanceOfSplitter = web3.eth.getBalance(instance.address);
 
@@ -124,26 +140,47 @@ contract("Splitter test", async (accounts) => {
         return expect(instance.withdrawEther(3, {from: bobAccount})).to.be.rejected;
     });
 
-    it("Should not be possible for payee to withdraw more than their assigned amount", async () => {
-        const instance = this.splitter;
-        await instance.performSplit(
-            bobAccount, carolAccount, {from: aliceAccount, value: new BN(5)}
-        )
-        return expect(instance.withdrawEther(3, {from: bobAccount})).to.be.rejected;
-    });
-
-    it("Should be possible for a payee to withdraw any positive amount up to and including their allored amount", async () => {
+    it("Should not be possible for payee to withdraw no wei or more than their assigned amount", async () => {
         const instance = this.splitter;
         await instance.performSplit(
             bobAccount, carolAccount, {from: aliceAccount, value: new BN(5)}
         )
         expect(instance.withdrawEther(0, {from: bobAccount})).to.be.rejected;
-        expect(instance.withdrawEther(1, {from: bobAccount})).to.be.fulfilled;
+        return expect(instance.withdrawEther(3, {from: bobAccount})).to.be.rejected;
+    });
 
-        await instance.withdrawEther(1, {from: bobAccount});
+    it("Should be possible for a payee to withdraw any positive amount up to and including their allored amount", async () => {
+        const instance = this.splitter;
+
+
+        const originalBalance = await web3.eth.getBalance(bobAccount);
+
+        await instance.performSplit(
+            bobAccount, carolAccount, {from: aliceAccount, value: new BN(500)}
+        )
+
+
+
+        const trx = await instance.withdrawEther(200, {from: bobAccount});
+        assert(trx.receipt.status, '0x01');
+        const gasUsed = trx.receipt.gasUsed;
+        const trx_tx = await web3.eth.getTransaction(trx.tx);
+        const gasPrice = new BN(trx_tx.gasPrice);
+        const gasCost = gasPrice.mul(new BN(gasUsed));
+        const checkBalance = new BN(originalBalance).sub(gasCost);
+        console.log(checkBalance);
+
         balanceOfSplitter = web3.eth.getBalance(instance.address);
+        const bobBalance = new BN(await web3.eth.getBalance(bobAccount));
+        console.log(await instance.payeeBalance.call(bobAccount, {from: aliceAccount}));
 
-        return expect(balanceOfSplitter).to.eventually.be.a.bignumber.equal(new BN(3));
+        assert.equal(await instance.payeeBalance.call(bobAccount, {from: aliceAccount}), 50);
+
+        console.log(bobBalance)
+        console.log(checkBalance)
+        assert.equal(bobBalance.sub(checkBalance), 200);
+
+        return expect(balanceOfSplitter).to.eventually.be.a.bignumber.equal(new BN(300));
     });
 
     // additional tests
