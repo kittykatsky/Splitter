@@ -38,6 +38,57 @@ contract("Splitter test", async (accounts) => {
         return expect(await instance.getOwner()).to.equal(aliceAccount)
     });
 
+    // testing pausability/killability
+    it("should not be able to run a paused contract", async () => {
+        const instance = this.splitter;
+
+        expect(instance.performSplit(bobAccount, carolAccount, {from: aliceAccount, value: 500})).to.be.fulfilled;
+        await instance.pause({from: aliceAccount})
+        expect(instance.performSplit(bobAccount, carolAccount, {from: aliceAccount, value: 500})).to.be.rejected;
+        expect(instance.withdrawEther(3, {from: bobAccount})).to.be.rejected;
+
+        await instance.resume({from: aliceAccount})
+        return expect(instance.performSplit(bobAccount, carolAccount, {from: aliceAccount, value: 500})).to.be.fulfilled;
+
+    });
+
+    it("should be possible to kill the contract and return all aloted eth to its payee", async () => {
+        const instance = this.splitter;
+        const originalBalanceBob = await web3.eth.getBalance(bobAccount);
+        const originalBalanceAlice = await web3.eth.getBalance(aliceAccount);
+
+        const trxSplit = await instance.performSplit(
+            bobAccount, carolAccount, {from: aliceAccount, value: new BN(501)}
+        )
+
+        assert(trxSplit.receipt.status, '0x01');
+
+        let gasUsedAlice = trxSplit.receipt.gasUsed;
+
+        const bobSplitterBalance = await instance.payeeBalance.call(aliceAccount, {from: aliceAccount});
+
+        const trxKill = await instance.killSplitter(
+            {from: aliceAccount)}
+        );
+
+        let gasUsedAlice = gasUsedAlice.add()trxSplit.receipt.gasUsed);
+
+        const trxKillTx = await web3.eth.getTransaction(trxKill.tx);
+
+        const gasPrice = new BN(trxKillTx.gasPrice);
+        const gasCost = gasPrice.mul(new BN(gasUsediAlice));
+
+        const checkBalance = new BN(originalBalanceAlice).sub(gasCost);
+
+        const bobBalance = new BN(await web3.eth.getBalance(bobAccount));
+        const aliceBalance = new BN(await web3.eth.getBalance(aliceAccount));
+
+        assert.equal(originalBalanceBob.add(bobSplitterBalance), bobBalance);
+
+        return assert.equal(aliceAccount.sub(checkBalance), 1);
+
+    });
+
     // testing construction
     it("Should not have have any ETH on deployment", async () => {
         const instance = this.splitter;
@@ -110,12 +161,12 @@ contract("Splitter test", async (accounts) => {
             bobAccount, carolAccount, {from: aliceAccount, value: new BN(10)}
         );
 
+        assert.equal(await instance.payeeBalance.call(aliceAccount, {from: aliceAccount}), 1);
         return assert.equal(await instance.payeeBalance.call(bobAccount, {from: aliceAccount}), 10);
     })
 
     it("All ether should be split equally between the payees", async () => {
         const instance = this.splitter;
-        origBalance = await web3.eth.getBalance(bobAccount);
 
         let splitAmount = Math.floor(5 / 2);
         let leftOver = 5 % 2;
@@ -151,33 +202,30 @@ contract("Splitter test", async (accounts) => {
 
     it("Should be possible for a payee to withdraw any positive amount up to and including their allored amount", async () => {
         const instance = this.splitter;
-
-
         const originalBalance = await web3.eth.getBalance(bobAccount);
-
         await instance.performSplit(
             bobAccount, carolAccount, {from: aliceAccount, value: new BN(500)}
         )
 
-
-
         const trx = await instance.withdrawEther(200, {from: bobAccount});
+
         assert(trx.receipt.status, '0x01');
+
         const gasUsed = trx.receipt.gasUsed;
+
         const trx_tx = await web3.eth.getTransaction(trx.tx);
+
         const gasPrice = new BN(trx_tx.gasPrice);
         const gasCost = gasPrice.mul(new BN(gasUsed));
+
         const checkBalance = new BN(originalBalance).sub(gasCost);
-        console.log(checkBalance);
 
         balanceOfSplitter = web3.eth.getBalance(instance.address);
+
         const bobBalance = new BN(await web3.eth.getBalance(bobAccount));
         console.log(await instance.payeeBalance.call(bobAccount, {from: aliceAccount}));
 
         assert.equal(await instance.payeeBalance.call(bobAccount, {from: aliceAccount}), 50);
-
-        console.log(bobBalance)
-        console.log(checkBalance)
         assert.equal(bobBalance.sub(checkBalance), 200);
 
         return expect(balanceOfSplitter).to.eventually.be.a.bignumber.equal(new BN(300));
