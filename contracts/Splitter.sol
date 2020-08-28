@@ -43,8 +43,7 @@ contract Splitter is Owned{
     function withdrawEther(uint amount) public returns (bool) {
         require(amount > 0, "No Ether requested");
         uint payeeAmount = payeeBalance[msg.sender];
-        require(amount <= payeeAmount, "More Ether requested than available");
-        payeeBalance[msg.sender] = payeeAmount.sub(amount);
+        payeeBalance[msg.sender] = payeeAmount.sub(amount, 'bad amount requested');
         emit LogEtherWithdrawnEvent(msg.sender, amount);
         msg.sender.transfer(amount);
         return true;
