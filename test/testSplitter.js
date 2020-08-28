@@ -68,10 +68,10 @@ contract("Splitter test", async (accounts) => {
         const bobSplitterBalance = await instance.payeeBalance.call(aliceAccount, {from: aliceAccount});
 
         const trxKill = await instance.killSplitter(
-            {from: aliceAccount)}
+            {from: aliceAccount}
         );
 
-        let gasUsedAlice = gasUsedAlice.add()trxSplit.receipt.gasUsed);
+        gasUsedAlice = gasUsedAlice.add(trxSplit.receipt.gasUsed);
 
         const trxKillTx = await web3.eth.getTransaction(trxKill.tx);
 
