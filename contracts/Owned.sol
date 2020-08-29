@@ -1,5 +1,7 @@
 pragma solidity ^0.6.0;
 
+/// @author Kat
+/// @title A contract for handling Ownership and access restrictions
 contract Owned {
 
     address private owner;
@@ -14,10 +16,15 @@ contract Owned {
         _;
     }
 
+    /// returns owner address
+    /// @dev N/A
     function getOwner() public view returns (address) {
         return owner;    
     }
 
+    /// change contract owner
+    /// @param newOwner - address of new owner
+    /// @dev emits address of new owner 
     function transferOwnership(address newOwner) public onlyOwner {
         require(newOwner != address(0x0));
         owner = newOwner;
