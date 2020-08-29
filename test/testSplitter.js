@@ -43,18 +43,17 @@ contract("Splitter test", async (accounts) => {
         const instance = this.splitter;
 
         expect(instance.performSplit(bobAccount, carolAccount, {from: aliceAccount, value: 500})).to.be.fulfilled;
-        await instance.pause({from: aliceAccount})
+        await instance.setPause({from: aliceAccount})
         expect(instance.performSplit(bobAccount, carolAccount, {from: aliceAccount, value: 500})).to.be.rejected;
         expect(instance.withdrawEther(3, {from: bobAccount})).to.be.rejected;
 
-        await instance.resume({from: aliceAccount})
+        await instance.setRunning({from: aliceAccount})
         return expect(instance.performSplit(bobAccount, carolAccount, {from: aliceAccount, value: 500})).to.be.fulfilled;
 
     });
 
-    it("should be possible to kill the contract and return all aloted eth to its payee", async () => {
+    it("should be possible to kill the contract and return all aloted eth to the owner", async () => {
         const instance = this.splitter;
-        const originalBalanceBob = await web3.eth.getBalance(bobAccount);
         const originalBalanceAlice = await web3.eth.getBalance(aliceAccount);
 
         const trxSplit = await instance.performSplit(
@@ -63,29 +62,40 @@ contract("Splitter test", async (accounts) => {
 
         assert(trxSplit.receipt.status, '0x01');
 
-        let gasUsedAlice = trxSplit.receipt.gasUsed;
+        let gasUsedAlice = new BN(trxSplit.receipt.gasUsed);
+        const trxSplitTx = await web3.eth.getTransaction(trxSplit.tx);
 
-        const bobSplitterBalance = await instance.payeeBalance.call(aliceAccount, {from: aliceAccount});
+        const trxPause = await instance.setPause({from: aliceAccount});
 
+        gasUsedAlice = gasUsedAlice.add(new BN(trxPause.receipt.gasUsed));
+        const trxPauseTx = await web3.eth.getTransaction(trxPause.tx);
+
+        let balanceOfSplitter = await web3.eth.getBalance(instance.address);
         const trxKill = await instance.killSplitter(
             {from: aliceAccount}
         );
 
-        gasUsedAlice = gasUsedAlice.add(trxSplit.receipt.gasUsed);
+        gasUsedAlice = gasUsedAlice.add(new BN(trxKill.receipt.gasUsed));
 
         const trxKillTx = await web3.eth.getTransaction(trxKill.tx);
 
         const gasPrice = new BN(trxKillTx.gasPrice);
-        const gasCost = gasPrice.mul(new BN(gasUsediAlice));
+        const gasCost = gasPrice.mul(gasUsedAlice);
+
+        let postKill = await web3.eth.getBalance(instance.address);
 
         const checkBalance = new BN(originalBalanceAlice).sub(gasCost);
 
-        const bobBalance = new BN(await web3.eth.getBalance(bobAccount));
         const aliceBalance = new BN(await web3.eth.getBalance(aliceAccount));
 
-        assert.equal(originalBalanceBob.add(bobSplitterBalance), bobBalance);
+        console.log('splitter ', balanceOfSplitter)
+        console.log('splitter ', postKill)
+        console.log('check ', checkBalance.toString())
+        console.log('alice ', aliceBalance.toString())
+        console.log('alice - gas', aliceBalance.sub(gasCost).toString())
+        console.log('alice - check ', new BN(aliceBalance).sub(checkBalance).toString())
 
-        return assert.equal(aliceAccount.sub(checkBalance), 1);
+        return assert.equal(aliceAccount.sub(checkBalance), 501);
 
     });
 
@@ -102,16 +112,12 @@ contract("Splitter test", async (accounts) => {
     it("Should not be possible for anyone to send ETH to the contract directly", async () => {
         const instance = this.splitter;
 
-        const trx = await web3.eth.sendTransaction({to: instance.address, from: aliceAccount, value:500})
-
-        console.log('------------trx');
-        console.log(trx);
-        //assert(trx.receipt.status, '0x01');
-        console.log('------------trx_tx');
-        const trx_tx = await web3.eth.getTransaction(trx.tx);
-        console.log(trx_tx);
-
-
+        return await truffleAssert.reverts(
+            web3.eth.sendTransaction(
+                {to: instance.address, from: aliceAccount, value:500},
+                "cant send eth to contract"
+            )
+        );
     });
 
     // testing splitter function
@@ -223,7 +229,6 @@ contract("Splitter test", async (accounts) => {
         balanceOfSplitter = web3.eth.getBalance(instance.address);
 
         const bobBalance = new BN(await web3.eth.getBalance(bobAccount));
-        console.log(await instance.payeeBalance.call(bobAccount, {from: aliceAccount}));
 
         assert.equal(await instance.payeeBalance.call(bobAccount, {from: aliceAccount}), 50);
         assert.equal(bobBalance.sub(checkBalance), 200);
