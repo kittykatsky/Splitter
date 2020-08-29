@@ -38,7 +38,7 @@ contract Pausable is Owned {
     function setPause() public onlyOwner returns(bool) {
         require(state == pauseState.Running, "contract already paused");
         state = pauseState.Paused;
-        emit LogPausedStateChage(msg.sender, state)
+        emit LogPausedStateChage(msg.sender, state);
 
         return true;
     }
@@ -49,7 +49,7 @@ contract Pausable is Owned {
     function setRunning() public onlyOwner returns(bool) {
         require(state == pauseState.Paused, "contract already running");
         state = pauseState.Running;
-        emit LogPausedStateChage(msg.sender, state)
+        emit LogPausedStateChage(msg.sender, state);
 
         return true;
     }

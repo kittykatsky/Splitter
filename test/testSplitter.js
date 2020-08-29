@@ -181,7 +181,7 @@ contract("Splitter test", async (accounts) => {
             bobAccount, carolAccount, {from: aliceAccount, value: new BN(5)}
         );
 
-        balanceOfSplitter = web3.eth.getBalance(instance.address);
+        const balanceOfSplitter = web3.eth.getBalance(instance.address);
 
         assert.equal(await instance.payeeBalance.call(bobAccount, {from: aliceAccount}), splitAmount);
         assert.equal(await instance.payeeBalance.call(carolAccount, {from: aliceAccount}), splitAmount);
@@ -226,7 +226,7 @@ contract("Splitter test", async (accounts) => {
 
         const checkBalance = new BN(originalBalance).sub(gasCost);
 
-        balanceOfSplitter = web3.eth.getBalance(instance.address);
+        const balanceOfSplitter = web3.eth.getBalance(instance.address);
 
         const bobBalance = new BN(await web3.eth.getBalance(bobAccount));
 
