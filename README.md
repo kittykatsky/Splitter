@@ -14,7 +14,23 @@ We purposely left a lot to be decided. Such description approximates how your hu
 
 ----------Project
 
-TODO
+The Splitter contract allow for its creator (Owner) to split an amount of ether between two different accounts by providing two seperate valid account addresses and a positive amount of ether to be split. As solidity doesnt handle floating point arithmatic yet, any leftover ether that reamins after the split will be pooled into a seperate bucket, and atempted to be added to any subsequent splits.
+
+The payees can in turn withdraw the ether allotted to them through the split.
+
+----------Run
+
+**Prerequisite**
+
+```bash
+ganache-cli -i 5777
+```
+
+**Test**
+
+```bash
+truffle test --network development
+```
 
 ----------Dependencies
 
@@ -43,6 +59,8 @@ npm
 ├── package_name@1.0.2
 
 ├── solc@0.7.0
+
+├── truffle-assertions@0.9.2 
 
 ├── truffle@5.1.41
 

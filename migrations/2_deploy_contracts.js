@@ -1,6 +1,9 @@
-var splitter = artifacts.require("./splitter.sol");
+var splitter = artifacts.require("./Splitter.sol");
+var owned = artifacts.require("./Owned.sol");
+var pausable = artifacts.require("./Pausable.sol");
 
-module.exports = async function(deployer) {
-    let addr = await web3.eth.getAccounts();
-    await deployer.deploy(splitter);
+module.exports = async function(deployer, network, accounts) {
+    await deployer.deploy(owned, {from: accounts[0]});
+    await deployer.deploy(pausable, {from: accounts[0]});
+    await deployer.deploy(splitter, {from: accounts[0]});
 };
