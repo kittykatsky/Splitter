@@ -37,8 +37,13 @@ truffle test --network development
 
 **Prerequisite**
 
-Metamask Wallet
+ - Metamask Wallet
+ - .env file in root directory with 12 word mnemonic:
 
+
+```bash
+MNEMONIC={12 word mnemonic}
+```
 
 start ganache
 
