@@ -6,39 +6,45 @@ import "./Owned.sol";
 /// @title A contract for controlling the flow of another contract 
 contract Pausable is Owned {
 
-    enum pauseState {Running, Paused}
-    event LogPausedStateChage(address indexed user, pauseState indexed state);
+    bool private _paused;
+    bool private dead;
 
-    pauseState private state;
+    event LogPaused(address indexed user, bool indexed state);
+    event LogKilled(address indexed useri, address indexed beneficiary);
 
-    constructor() public {
-        state = pauseState.Running;
+
+    constructor(bool initalState) public {
+        _paused = initalState;
     }
 
     modifier running() {
-        require(state == pauseState.Running, "contract not running");
+        require(!_paused, "contract not running");
         _;
     }
 
     modifier paused() {
-        require(state == pauseState.Paused, "contract not paused");
+        require(_paused, "contract not paused");
+        _;
+    }
+
+    modifier alive() {
+        require(!dead, "contract terminated");
         _;
     }
 
     /// returns state of contract
-    /// @dev possible states are Running/Paused 
-	/// @return returns paused state 
-    function getState() public view returns (pauseState) {
-        return state;    
-    }
+	/// @dev possible states are Running/Paused
+	/// @return returns paused state
+	function isPaused() public view returns (bool) {
+	    return _paused;
+	}    
 
     /// set contract state to paused
     /// @dev emits event containing address of caller and new state
 	/// @return true if succesfull
-    function setPause() public onlyOwner returns(bool) {
-        require(state == pauseState.Running, "contract already paused");
-        state = pauseState.Paused;
-        emit LogPausedStateChage(msg.sender, state);
+    function pause() public onlyOwner running returns(bool) {
+        _paused = true;
+        emit LogPaused(msg.sender, _paused);
 
         return true;
     }
@@ -46,11 +52,28 @@ contract Pausable is Owned {
     /// set contract state to running
     /// @dev emits event containing address of caller and new state
 	/// @return true if succesfull
-    function setRunning() public onlyOwner returns(bool) {
-        require(state == pauseState.Paused, "contract already running");
-        state = pauseState.Running;
-        emit LogPausedStateChage(msg.sender, state);
+    function resume() public onlyOwner paused returns(bool) {
+        _paused = false;
+        emit LogPaused(msg.sender, _paused);
 
         return true;
     }
+
+    /// permanently turning off the contract
+	/// @param beneficiary the address recieving the reamining funds 
+    /// @dev emits event containing address of account that triggered kill
+	/// @return true if succesfull
+    function kill(address payable beneficiary) public onlyOwner paused alive returns(bool) {
+        require(beneficiary != address(0x0), "Incorrect account specified");
+        dead = true;
+        emit LogKilled(msg.sender, beneficiary);
+		emptyAccunt(beneficiary);	
+        return true;
+    }
+
+    /// empty contract of ether
+	/// @param destination destination of contract funds
+	function emptyAccunt(address payable destination) private {
+        destination.call{value: address(this).balance}("");
+	}
 }

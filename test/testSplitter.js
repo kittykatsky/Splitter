@@ -23,7 +23,7 @@ contract("Splitter test", async (accounts) => {
     const [aliceAccount, bobAccount, carolAccount] = accounts;
 
     beforeEach("Setting up splitter", async () => {
-        this.splitter = await Splitter.new({from: aliceAccount});
+        this.splitter = await Splitter.new(false, {from: aliceAccount});
         assert.equal(await web3.eth.getBalance(this.splitter.address), 0)
      });
 
@@ -43,11 +43,11 @@ contract("Splitter test", async (accounts) => {
         const instance = this.splitter;
 
         expect(instance.performSplit(bobAccount, carolAccount, {from: aliceAccount, value: 500})).to.be.fulfilled;
-        await instance.setPause({from: aliceAccount})
+        await instance.pause({from: aliceAccount})
         expect(instance.performSplit(bobAccount, carolAccount, {from: aliceAccount, value: 500})).to.be.rejected;
         expect(instance.withdrawEther(3, {from: bobAccount})).to.be.rejected;
 
-        await instance.setRunning({from: aliceAccount})
+        await instance.resume({from: aliceAccount})
         return expect(instance.performSplit(bobAccount, carolAccount, {from: aliceAccount, value: 500})).to.be.fulfilled;
 
     });
@@ -63,15 +63,19 @@ contract("Splitter test", async (accounts) => {
         assert(trxSplit.receipt.status, '0x01');
 
         let gasUsedAlice = new BN(trxSplit.receipt.gasUsed);
-        const trxSplitTx = await web3.eth.getTransaction(trxSplit.tx);
 
-        const trxPause = await instance.setPause({from: aliceAccount});
+        const trxSplitTx = await web3.eth.getTransaction(trxSplit.tx);
+        const trxPause = await instance.pause({from: aliceAccount});
 
         gasUsedAlice = gasUsedAlice.add(new BN(trxPause.receipt.gasUsed));
+
+
         const trxPauseTx = await web3.eth.getTransaction(trxPause.tx);
 
         let balanceOfSplitter = await web3.eth.getBalance(instance.address);
-        const trxKill = await instance.killSplitter(
+
+        const trxKill = await instance.kill(
+			aliceAccount,
             {from: aliceAccount}
         );
 
@@ -88,15 +92,8 @@ contract("Splitter test", async (accounts) => {
 
         const aliceBalance = new BN(await web3.eth.getBalance(aliceAccount));
 
-        console.log('splitter ', balanceOfSplitter)
-        console.log('splitter ', postKill)
-        console.log('check ', checkBalance.toString())
-        console.log('alice ', aliceBalance.toString())
-        console.log('alice - gas', aliceBalance.sub(gasCost).toString())
-        console.log('alice - check ', new BN(aliceBalance).sub(checkBalance).toString())
-
-        return assert.equal(aliceAccount.sub(checkBalance), 501);
-
+        expect(instance.performSplit(bobAccount, carolAccount, {from: aliceAccount, value: 1})).to.be.rejected;
+        return assert.equal(aliceBalance.sub(checkBalance), 0);
     });
 
     // testing construction
@@ -105,9 +102,6 @@ contract("Splitter test", async (accounts) => {
         let balanceOfSplitter = web3.eth.getBalance(instance.address);
         return expect(balanceOfSplitter).to.eventually.be.a.bignumber.equal(new BN(0));
     });
-
-
-    //Cant get this test to work now that the fallback function revert has been removed
 
     it("Should not be possible for anyone to send ETH to the contract directly", async () => {
         const instance = this.splitter;
