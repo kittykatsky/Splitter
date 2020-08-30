@@ -64,6 +64,7 @@ contract Pausable is Owned {
     /// @dev emits event containing address of account that triggered kill
 	/// @return true if succesfull
     function kill(address payable beneficiary) public onlyOwner paused alive returns(bool) {
+        require(beneficiary != address(0x0), "Incorrect account specified");
         dead = true;
         emit LogKilled(msg.sender, beneficiary);
 		emptyAccunt(beneficiary);	
