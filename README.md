@@ -32,6 +32,36 @@ ganache-cli -i 5777
 truffle test --network development
 ```
 
+
+----------Web
+
+**Prerequisite**
+
+Metamask Wallet
+
+
+start ganache
+
+```bash
+ganache-cli -i 5777
+```
+
+deploy contracts on network with HdWallet (ensure that account in metamask has enough ether to deploy the contract)
+
+```bash
+truffle migrate --network ganache-local
+```
+
+run npm start in client folder
+
+```bash
+npm start
+```
+
+- Connect metamask to ganache-local
+- Import additional wallet from ganache
+- Split ether between specified accounts!
+
 ----------Dependencies
 
 Truffle v5.1.14-nodeLTS.0 (core: 5.1.13)
@@ -45,6 +75,8 @@ Web3.js v1.2.1
 npm
 
 ├── @openzeppelin/contracts@3.0.0
+
+├── @truffle/hdwallet-provider@1.0.43
 
 ├── chai@4.2.0
 
