@@ -14,6 +14,8 @@ contract Splitter is Pausable{
     event LogEtherWithdrawnEvent(address indexed sender, uint amount);
     event LogSplitDoneEvent(address indexed sender, address indexed payee1, address indexed payee2, uint amount);
 
+    constructor(bool pauseState) Pausable(pauseState) public {}
+
     /// Split funds between payees
     /// @param payee1 - first payee
     /// @param payee2 - second payee
@@ -45,11 +47,7 @@ contract Splitter is Pausable{
         uint payeeAmount = payeeBalance[msg.sender];
         payeeBalance[msg.sender] = payeeAmount.sub(amount, 'bad amount requested');
         emit LogEtherWithdrawnEvent(msg.sender, amount);
-        msg.sender.transfer(amount);
+        msg.sender.call{value: amount}("");
         return true;
-    }
-
-    function killSplitter() public onlyOwner paused {
-        selfdestruct(msg.sender);
     }
 }
