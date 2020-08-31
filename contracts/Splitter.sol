@@ -20,7 +20,7 @@ contract Splitter is Pausable{
     /// @param payee1 - first payee
     /// @param payee2 - second payee
     /// @dev  
-    function performSplit(address payable payee1, address payable payee2) public running payable {
+    function performSplit(address payable payee1, address payable payee2) public whenRunning payable {
         require(payee1 != address(0x0) && payee2 != address(0x0), "incorrect payee specified");
         require(payee1 != payee2, "only one payee specified");
         require(payee1 != msg.sender && payee2 != msg.sender, "sender can't be payee");
@@ -42,7 +42,7 @@ contract Splitter is Pausable{
     /// @param amount the amount of ehter to withdraw
     /// @dev allows payee to withdraw their alloted funds
 	/// @return true if succesfull
-    function withdrawEther(uint amount) public running returns (bool) {
+    function withdrawEther(uint amount) public whenRunning returns (bool) {
         require(amount > 0, "No Ether requested");
         uint payeeAmount = payeeBalance[msg.sender];
         payeeBalance[msg.sender] = payeeAmount.sub(amount, 'bad amount requested');

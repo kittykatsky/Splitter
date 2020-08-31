@@ -75,15 +75,20 @@ contract("Splitter test", async (accounts) => {
         let balanceOfSplitter = await web3.eth.getBalance(instance.address);
 
         const trxKill = await instance.kill(
-			aliceAccount,
             {from: aliceAccount}
         );
 
         gasUsedAlice = gasUsedAlice.add(new BN(trxKill.receipt.gasUsed));
 
-        const trxKillTx = await web3.eth.getTransaction(trxKill.tx);
+        const trxRet = await instance.emptyAccount(
+			aliceAccount,
+            {from: aliceAccount}
+        );
 
-        const gasPrice = new BN(trxKillTx.gasPrice);
+        gasUsedAlice = gasUsedAlice.add(new BN(trxRet.receipt.gasUsed));
+        const trxRetTx = await web3.eth.getTransaction(trxRet.tx);
+
+        const gasPrice = new BN(trxRetTx.gasPrice);
         const gasCost = gasPrice.mul(gasUsedAlice);
 
         let postKill = await web3.eth.getBalance(instance.address);
@@ -92,8 +97,17 @@ contract("Splitter test", async (accounts) => {
 
         const aliceBalance = new BN(await web3.eth.getBalance(aliceAccount));
 
+        console.log('splitter ', balanceOfSplitter)
+        console.log('splitter ', postKill)
+        console.log('check ', checkBalance.toString())
+        console.log('alice ', aliceBalance.toString())
+        console.log('alice - gas', aliceBalance.sub(gasCost).toString())
+        console.log('alice - check ', aliceBalance.sub(checkBalance).toString())
+
         expect(instance.performSplit(bobAccount, carolAccount, {from: aliceAccount, value: 1})).to.be.rejected;
-        return assert.equal(aliceBalance.sub(checkBalance), 0);
+        assert.equal(aliceBalance.sub(checkBalance), 0);
+
+
     });
 
     // testing construction

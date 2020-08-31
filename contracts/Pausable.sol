@@ -6,28 +6,28 @@ import "./Owned.sol";
 /// @title A contract for controlling the flow of another contract 
 contract Pausable is Owned {
 
-    bool private _paused;
+    bool private paused;
     bool private dead;
 
-    event LogPaused(address indexed user, bool indexed state);
-    event LogKilled(address indexed useri, address indexed beneficiary);
+    event LogPaused(address indexed sender, bool indexed state);
+    event LogKilled(address indexed sender);
+    event LogEmptied(address beneficiary, uint amount);
 
-
-    constructor(bool initalState) public {
-        _paused = initalState;
+    constructor(bool _paused) public {
+        paused = _paused;
     }
 
-    modifier running() {
-        require(!_paused, "contract not running");
+    modifier whenRunning() {
+        require(!paused, "contract not running");
         _;
     }
 
-    modifier paused() {
-        require(_paused, "contract not paused");
+    modifier whenPaused() {
+        require(paused, "contract not paused");
         _;
     }
 
-    modifier alive() {
+    modifier whenAlive() {
         require(!dead, "contract terminated");
         _;
     }
@@ -36,15 +36,15 @@ contract Pausable is Owned {
 	/// @dev possible states are Running/Paused
 	/// @return returns paused state
 	function isPaused() public view returns (bool) {
-	    return _paused;
+	    return paused;
 	}    
 
     /// set contract state to paused
     /// @dev emits event containing address of caller and new state
 	/// @return true if succesfull
-    function pause() public onlyOwner running returns(bool) {
-        _paused = true;
-        emit LogPaused(msg.sender, _paused);
+    function pause() public onlyOwner whenRunning returns(bool) {
+        paused = true;
+        emit LogPaused(msg.sender, paused);
 
         return true;
     }
@@ -52,28 +52,30 @@ contract Pausable is Owned {
     /// set contract state to running
     /// @dev emits event containing address of caller and new state
 	/// @return true if succesfull
-    function resume() public onlyOwner paused returns(bool) {
-        _paused = false;
-        emit LogPaused(msg.sender, _paused);
+    function resume() public onlyOwner whenPaused returns(bool) {
+        paused = false;
+        emit LogPaused(msg.sender, paused);
 
         return true;
     }
 
     /// permanently turning off the contract
-	/// @param beneficiary the address recieving the reamining funds 
     /// @dev emits event containing address of account that triggered kill
 	/// @return true if succesfull
-    function kill(address payable beneficiary) public onlyOwner paused alive returns(bool) {
-        require(beneficiary != address(0x0), "Incorrect account specified");
+    function kill() public onlyOwner whenPaused whenAlive returns(bool) {
         dead = true;
-        emit LogKilled(msg.sender, beneficiary);
-		emptyAccunt(beneficiary);	
+        emit LogKilled(msg.sender);
         return true;
     }
 
     /// empty contract of ether
-	/// @param destination destination of contract funds
-	function emptyAccunt(address payable destination) private {
-        destination.call{value: address(this).balance}("");
+    /// @dev emits event containing address of beneficiary of remaining funds and amount of funds forwarded
+	/// @param beneficiary beneficiary of remaining contract funds
+	function emptyAccount(address payable beneficiary) public onlyOwner {
+        require(dead, "Contract needs to be terminated");
+        require(beneficiary != address(0x0), "Incorrect account specified");
+        address splitterAddress = address(this);
+        emit LogEmptied(beneficiary, splitterAddress.balance);
+        beneficiary.call{value: splitterAddress.balance}("");
 	}
 }
