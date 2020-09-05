@@ -1,12 +1,9 @@
 import React, { Component } from "react";
 import splitterContract from "./contracts/Splitter.json";
-//import getWeb3 from "./getWeb3";
 
 import "./App.css";
 import Web3 from "web3";
 import truffleContract from "truffle-contract";
-// Not to forget our built contract
-// const splitterJson = require("./contracts/Splitter.json");
 
 
 class App extends Component {
@@ -15,11 +12,9 @@ class App extends Component {
   componentDidMount = async () => {
     try {
         if (typeof window.web3 !== 'undefined') {
-                // Use the Mist/wallet/Metamask provider.
                 window.web3 = new Web3(window.web3.currentProvider);
 
         } else {
-                // Your preferred fallback.
                 window.web3 = new Web3(new Web3.providers.HttpProvider('http://172.18.45.144:8545'));
 
         }
@@ -40,9 +35,13 @@ class App extends Component {
       console.log(window.accounts);
       if(window.accounts.length < 3) throw 'not enough accounts to perform Split';
 
-      this.setState({loaded:true, splitterAddress: this.Splitter.address}, this.updateAmounts, this.updatePayeeAmounts);
+      this.setState(
+          {loaded:true, splitterAddress: this.Splitter.address},
+          this.updateAmounts, this.updatePayeeAmounts
+      );
+
     } catch (error) {
-      // Catch any errors for any of the above operations.
+
       alert(
         `Failed to load web3, accounts, or contract. Check console for details.`,
       );
@@ -68,7 +67,10 @@ class App extends Component {
 
     await this.Splitter.performSplit.call(
         this.state.payeeOneAddress, this.state.payeeTwoAddress,
-        {from: window.accounts[0], value: window.web3.utils.toWei(this.state.splitAmount.toString(), "wei")}
+        {
+            from: window.accounts[0],
+            value: window.web3.utils.toWei(this.state.splitAmount.toString(), "wei")
+        }
     )
     .then(success => {
         if (!success) {
@@ -78,7 +80,10 @@ class App extends Component {
 
     await this.Splitter.performSplit(
         this.state.payeeOneAddress, this.state.payeeTwoAddress,
-        {from: window.accounts[0], value: window.web3.utils.toWei(this.state.splitAmount.toString(), "wei")}
+        {
+            from: window.accounts[0],
+            value: window.web3.utils.toWei(this.state.splitAmount.toString(), "wei")
+        }
     )
     .on('transactionHash', (hash) => {
         alert('Transaction submitted with the following hash: \n' + hash);
@@ -97,11 +102,13 @@ class App extends Component {
   };
 
   listenToTransfer = () => {
-    this.Splitter.LogSplitDoneEvent().on("data", this.updateAmounts, this.updatePayeeAmounts);
+    this.Splitter.LogSplitDoneEvent()
+          .on("data", this.updateAmounts, this.updatePayeeAmounts);
   };
 
   listenToWithdraw = () => {
-    this.Splitter.LogEtherWithdrawnEvent().on("data", this.updateAmounts, this.updatePayeeAmounts);
+    this.Splitter.LogEtherWithdrawnEvent()
+          .on("data", this.updateAmounts, this.updatePayeeAmounts);
   };
 
   updateAmounts = async () => {
@@ -138,9 +145,30 @@ class App extends Component {
         <p>Splitter Ballance: {this.state.splitterAmout} Wei</p>
         <h2>Split Wei</h2>
         <div>
-            <p>Amount to split: <input type="text" name="splitAmount" value={this.state.splitAmount} onChange={this.handleInputChange} /></p>
-            <p>Payee 1 address: <input type="text" name="payeeOneAddress" value={this.state.payeeOneAddress} onChange={this.handleInputChange} /></p>
-            <p>Payee 2 address: <input type="text" name="payeeTwoAddress" value={this.state.payeeTwoAddress} onChange={this.handleInputChange} /></p>
+            <p>Amount to split:
+                <
+                    input itype="text"
+                    name="splitAmount"
+                    value={this.state.splitAmount}
+                    onChange={this.handleInputChange}
+                />
+            </p>
+            <p>Payee 1 address:
+                <
+                    input type="text"
+                    name="payeeOneAddress"
+                    value={this.state.payeeOneAddress}
+                    onChange={this.handleInputChange}
+                />
+            </p>
+            <p>Payee 2 address:
+                <
+                    input type="text"
+                    name="payeeTwoAddress"
+                    value={this.state.payeeTwoAddress}
+                    onChange={this.handleInputChange}
+                />
+            </p>
             <button type="button" onClick={this.handleSplit}>Split!</button>
         </div>
         <div> funds available</div>
