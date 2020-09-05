@@ -1,39 +1,46 @@
 import React, { Component } from "react";
 import splitterContract from "./contracts/Splitter.json";
-import getWeb3 from "./getWeb3";
+//import getWeb3 from "./getWeb3";
 
 import "./App.css";
+import Web3 from "web3";
+import truffleContract from "truffle-contract";
+// Not to forget our built contract
+// const splitterJson = require("./contracts/Splitter.json");
+
 
 class App extends Component {
   state = { loaded:false, splitterAddress: "0x0", splitterAmout:0, splitAmount:0, ownerAmount:0, payeeOneAddress: "0x0", payeeTwoAddress: "0x0", payeeOneAmount:0, payeeTwoAmount:0 };
 
   componentDidMount = async () => {
     try {
-      // Get network provider and web3 instance.
-      this.web3 = await getWeb3();
+        if (typeof window.web3 !== 'undefined') {
+                // Use the Mist/wallet/Metamask provider.
+                window.web3 = new Web3(window.web3.currentProvider);
 
-      // Use web3 to get the user's accounts.
-      this.accounts = await this.web3.eth.getAccounts();
+        } else {
+                // Your preferred fallback.
+                window.web3 = new Web3(new Web3.providers.HttpProvider('http://172.18.45.144:8545'));
 
-      // Get the contract instance.
-      this.networkId = await this.web3.eth.net.getId();
+        }
 
-      console.log(this.accounts);
-      console.log(this.networkId);
-      console.log(splitterContract.networks);
-      console.log(splitterContract.networks[this.networkId].address);
-
-      this.Splitter = new this.web3.eth.Contract(
-        splitterContract.abi,
-        splitterContract.networks[this.networkId] && splitterContract.networks[this.networkId].address,
-      );
+      const SplitterC = truffleContract(splitterContract);
+      SplitterC.setProvider(window.web3.currentProvider);
+      this.Splitter = await SplitterC.deployed()
+      console.log(this.Splitter);
+      console.log(window.web3.currentProvider);
+      console.log(await window.web3.eth.getBalance(this.Splitter.address));
 
       this.listenToTransfer();
       this.listenToWithdraw();
 
-      // Error this.web3.on is not a function
-      //this.web3.accounts.on('update', (selectedAddress) => console.log(selectedAddress));
-      this.setState({loaded:true, splitterAddress: splitterContract.networks[this.networkId].address}, this.updateAmounts, this.updatePayeeAmounts);
+      console.log(await window.web3.eth.getAccounts());
+      console.log(await window.web3.eth.accounts);
+      window.accounts = await window.web3.eth.getAccounts();
+      console.log(window.accounts);
+      if(window.accounts.length < 3) throw 'not enough accounts to perform Split';
+
+      this.setState({loaded:true, splitterAddress: this.Splitter.address}, this.updateAmounts, this.updatePayeeAmounts);
     } catch (error) {
       // Catch any errors for any of the above operations.
       alert(
@@ -53,36 +60,60 @@ class App extends Component {
   };
 
   handleSplit = async() => {
-    await this.Splitter.methods.performSplit(
-        this.state.payeeOneAddress, this.state.payeeTwoAddress
-    ).send(
-        {from: this.accounts[0], value: this.web3.utils.toWei(this.state.splitAmount, "wei")}
-    );
-    this.setState({splitAmount:0})
+
+    if((this.state.payeeOneAddress == '0x0' || this.state.payeeTwoAddress == '0x0'))
+          throw 'not enough accounts aspecified';
+    if(this.state.splitAmount <= 1)
+          throw 'not enough wei provided for split';
+
+    await this.Splitter.performSplit.call(
+        this.state.payeeOneAddress, this.state.payeeTwoAddress,
+        {from: window.accounts[0], value: window.web3.utils.toWei(this.state.splitAmount.toString(), "wei")}
+    ).then(
+        this.Splitter.performSplit(
+        this.state.payeeOneAddress, this.state.payeeTwoAddress,
+        {from: window.accounts[0], value: window.web3.utils.toWei(this.state.splitAmount.toString(), "wei")}
+    ).on('transactionHash', (hash) => {
+        alert('Transaction submitted with the following hash: \n' + hash);
+    }).on('receipt', (receipt) => {
+        var success = receipt.status ? 'succeded' : 'failed';
+        alert('Transaction ' + success);
+    }).catch(e => {
+     console.log("Call Failed", e);
+    }));
+
+    this.updateAmounts();
+    this.updatePayeeAmounts();
+    this.setState({splitAmount:0});
   };
 
   listenToTransfer = () => {
-    this.Splitter.events.LogSplitDoneEvent().on("data", this.updateAmounts, this.updatePayeeAmounts);
+    this.Splitter.LogSplitDoneEvent().on("data", this.updateAmounts, this.updatePayeeAmounts);
   };
 
   listenToWithdraw = () => {
-    this.Splitter.events.LogEtherWithdrawnEvent().on("data", this.updateAmounts, this.updatePayeeAmounts);
+    this.Splitter.LogEtherWithdrawnEvent().on("data", this.updateAmounts, this.updatePayeeAmounts);
   };
 
   updateAmounts = async () => {
-    const ownerShare = await this.Splitter.methods.payeeBalance(this.accounts[0]).call();
-    const splitterBalance = await this.web3.eth.getBalance(this.state.splitterAddress);
+    let ownerShare = '0';
+    try{
+       ownerShare = await this.Splitter.payeeBalance(window.accounts[0]);
+    } catch (e){
+        console.log(e)
+        }
+    const splitterBalance = await window.web3.eth.getBalance(this.state.splitterAddress);
 
-    this.setState({ownerAmount: ownerShare});
-    this.setState({splitterAmout:splitterBalance})
+    this.setState({ownerAmount: ownerShare.toString()});
+    this.setState({splitterAmout:splitterBalance.toString()})
   }
 
   updatePayeeAmounts = async () => {
     try{
-        const payeeOneShare = await this.Splitter.methods.payeeBalance(this.state.payeeOneAddress).call();
-        const payeeTwoShare = await this.Splitter.methods.payeeBalance(this.state.payeeTwoAddress).call();
-        this.setState({payeeOneAmount: payeeOneShare});
-        this.setState({payeeTwoAmount: payeeTwoShare});
+        const payeeOneShare = await this.Splitter.payeeBalance(this.state.payeeOneAddress);
+        const payeeTwoShare = await this.Splitter.payeeBalance(this.state.payeeTwoAddress);
+        this.setState({payeeOneAmount: payeeOneShare.toString()});
+        this.setState({payeeTwoAmount: payeeTwoShare.toString()});
     } catch (e){
         console.log(e)
         }
