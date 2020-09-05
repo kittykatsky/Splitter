@@ -61,26 +61,35 @@ class App extends Component {
 
   handleSplit = async() => {
 
-    if((this.state.payeeOneAddress == '0x0' || this.state.payeeTwoAddress == '0x0'))
-          throw 'not enough accounts aspecified';
+    if((this.state.payeeOneAddress === '0x0' || this.state.payeeTwoAddress === '0x0'))
+        throw 'not enough accounts aspecified';
     if(this.state.splitAmount <= 1)
-          throw 'not enough wei provided for split';
+        throw 'not enough wei provided for split';
 
     await this.Splitter.performSplit.call(
         this.state.payeeOneAddress, this.state.payeeTwoAddress,
         {from: window.accounts[0], value: window.web3.utils.toWei(this.state.splitAmount.toString(), "wei")}
-    ).then(
-        this.Splitter.performSplit(
+    )
+    .then(success => {
+        if (!success) {
+            throw new Error("The transaction will fail anyway, not sending");
+        }
+    });
+
+    await this.Splitter.performSplit(
         this.state.payeeOneAddress, this.state.payeeTwoAddress,
         {from: window.accounts[0], value: window.web3.utils.toWei(this.state.splitAmount.toString(), "wei")}
-    ).on('transactionHash', (hash) => {
+    )
+    .on('transactionHash', (hash) => {
         alert('Transaction submitted with the following hash: \n' + hash);
-    }).on('receipt', (receipt) => {
+    })
+    .on('receipt', (receipt) => {
         var success = receipt.status ? 'succeded' : 'failed';
         alert('Transaction ' + success);
-    }).catch(e => {
+    })
+    .catch(e => {
      console.log("Call Failed", e);
-    }));
+    });
 
     this.updateAmounts();
     this.updatePayeeAmounts();
