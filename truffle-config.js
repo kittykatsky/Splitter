@@ -9,12 +9,12 @@ module.exports = {
 	// ganache
     development: {
       port: 8545,
-      host: "172.22.238.57",//"127.0.0.1",
+      host: "172.18.45.144",//"127.0.0.1",
       network_id: 5777
     },
     ganache_local: {
       provider: function() {
-        return new HDWalletProvider(process.env.MNEMONIC, "http://172.22.238.57:8545", AccountIndex)
+        return new HDWalletProvider(process.env.MNEMONIC, "http://172.18.45.144:8545", AccountIndex)
       },
       network_id: 5777
     },
