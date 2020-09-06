@@ -10,6 +10,7 @@ contract Pausable is Owned {
     bool private dead;
 
     event LogPaused(address indexed sender, bool indexed state);
+    event LogResumed(address indexed sender, bool indexed state);
     event LogKilled(address indexed sender);
     event LogEmptied(address beneficiary, uint amount);
 
@@ -54,7 +55,7 @@ contract Pausable is Owned {
 	/// @return true if succesfull
     function resume() public onlyOwner whenPaused returns(bool) {
         paused = false;
-        emit LogPaused(msg.sender, paused);
+        emit LogResumed(msg.sender, paused);
 
         return true;
     }
