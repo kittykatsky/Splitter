@@ -47,7 +47,8 @@ contract Splitter is Pausable{
         uint payeeAmount = payeeBalance[msg.sender];
         payeeBalance[msg.sender] = payeeAmount.sub(amount, 'bad amount requested');
         emit LogEtherWithdrawnEvent(msg.sender, amount);
-        msg.sender.call{value: amount}("");
+        (bool success, ) = msg.sender.call{value: amount}("");
+        require(success, 'Transfer failed!');
         return true;
     }
 }
