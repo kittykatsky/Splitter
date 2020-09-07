@@ -29,7 +29,7 @@ contract("Splitter test", async (accounts) => {
 
     // testing ownership
     it("Owned contract should be owned by its deployer", async () => {
-        const ownerInstance = await Owned.deployed();
+        const ownerInstance= await Owned.new({from: aliceAccount});
         return expect(await ownerInstance.getOwner()).to.equal(aliceAccount)
         });
 
