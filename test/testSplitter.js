@@ -20,11 +20,13 @@ require("dotenv").config({path: "../.env"});
 
 contract("Splitter test", async (accounts) => {
 
+    let splitter;
+
     const [aliceAccount, bobAccount, carolAccount] = accounts;
 
     beforeEach("Setting up splitter", async () => {
-        this.splitter = await Splitter.new(false, {from: aliceAccount});
-        assert.equal(await web3.eth.getBalance(this.splitter.address), 0)
+        splitter = await Splitter.new(false, {from: aliceAccount});
+        assert.strictEqual(await web3.eth.getBalance(splitter.address), '0')
      });
 
     // testing ownership
@@ -34,29 +36,25 @@ contract("Splitter test", async (accounts) => {
         });
 
     it("Should have the deployer as its owner", async () => {
-        const instance = this.splitter;
-        return expect(await instance.getOwner()).to.equal(aliceAccount)
+        return expect(await splitter.getOwner()).to.equal(aliceAccount)
     });
 
     // testing pausability/killability
     it("should not be able to run a paused contract", async () => {
-        const instance = this.splitter;
+        expect(splitter.performSplit(bobAccount, carolAccount, {from: aliceAccount, value: 500})).to.be.fulfilled;
+        await splitter.pause({from: aliceAccount})
+        expect(splitter.performSplit(bobAccount, carolAccount, {from: aliceAccount, value: 500})).to.be.rejected;
+        expect(splitter.withdrawEther(3, {from: bobAccount})).to.be.rejected;
 
-        expect(instance.performSplit(bobAccount, carolAccount, {from: aliceAccount, value: 500})).to.be.fulfilled;
-        await instance.pause({from: aliceAccount})
-        expect(instance.performSplit(bobAccount, carolAccount, {from: aliceAccount, value: 500})).to.be.rejected;
-        expect(instance.withdrawEther(3, {from: bobAccount})).to.be.rejected;
-
-        await instance.resume({from: aliceAccount})
-        return expect(instance.performSplit(bobAccount, carolAccount, {from: aliceAccount, value: 500})).to.be.fulfilled;
+        await splitter.resume({from: aliceAccount})
+        return expect(splitter.performSplit(bobAccount, carolAccount, {from: aliceAccount, value: 500})).to.be.fulfilled;
 
     });
 
     it("should be possible to kill the contract and return all aloted eth to the owner", async () => {
-        const instance = this.splitter;
         const originalBalanceAlice = await web3.eth.getBalance(aliceAccount);
 
-        const trxSplit = await instance.performSplit(
+        const trxSplit = await splitter.performSplit(
             bobAccount, carolAccount, {from: aliceAccount, value: new BN(501)}
         )
 
@@ -65,22 +63,22 @@ contract("Splitter test", async (accounts) => {
         let gasUsedAlice = new BN(trxSplit.receipt.gasUsed);
 
         const trxSplitTx = await web3.eth.getTransaction(trxSplit.tx);
-        const trxPause = await instance.pause({from: aliceAccount});
+        const trxPause = await splitter.pause({from: aliceAccount});
 
         gasUsedAlice = gasUsedAlice.add(new BN(trxPause.receipt.gasUsed));
 
 
         const trxPauseTx = await web3.eth.getTransaction(trxPause.tx);
 
-        let balanceOfSplitter = await web3.eth.getBalance(instance.address);
+        let balanceOfSplitter = await web3.eth.getBalance(splitter.address);
 
-        const trxKill = await instance.kill(
+        const trxKill = await splitter.kill(
             {from: aliceAccount}
         );
 
         gasUsedAlice = gasUsedAlice.add(new BN(trxKill.receipt.gasUsed));
 
-        const trxRet = await instance.emptyAccount(
+        const trxRet = await splitter.emptyAccount(
 			aliceAccount,
             {from: aliceAccount}
         );
@@ -91,7 +89,7 @@ contract("Splitter test", async (accounts) => {
         const gasPrice = new BN(trxRetTx.gasPrice);
         const gasCost = gasPrice.mul(gasUsedAlice);
 
-        let postKill = await web3.eth.getBalance(instance.address);
+        let postKill = await web3.eth.getBalance(splitter.address);
 
         const checkBalance = new BN(originalBalanceAlice).sub(gasCost);
 
@@ -104,25 +102,22 @@ contract("Splitter test", async (accounts) => {
         console.log('alice - gas', aliceBalance.sub(gasCost).toString())
         console.log('alice - check ', aliceBalance.sub(checkBalance).toString())
 
-        expect(instance.performSplit(bobAccount, carolAccount, {from: aliceAccount, value: 1})).to.be.rejected;
-        assert.equal(aliceBalance.sub(checkBalance), 0);
+        expect(splitter.performSplit(bobAccount, carolAccount, {from: aliceAccount, value: 1})).to.be.rejected;
+        assert.strictEqual(aliceBalance.sub(checkBalance).toString(), '0');
 
 
     });
 
     // testing construction
     it("Should not have have any ETH on deployment", async () => {
-        const instance = this.splitter;
-        let balanceOfSplitter = web3.eth.getBalance(instance.address);
+        let balanceOfSplitter = web3.eth.getBalance(splitter.address);
         return expect(balanceOfSplitter).to.eventually.be.a.bignumber.equal(new BN(0));
     });
 
     it("Should not be possible for anyone to send ETH to the contract directly", async () => {
-        const instance = this.splitter;
-
         return await truffleAssert.reverts(
             web3.eth.sendTransaction(
-                {to: instance.address, from: aliceAccount, value:500},
+                {to: splitter.address, from: aliceAccount, value:500},
                 "cant send eth to contract"
             )
         );
@@ -130,70 +125,67 @@ contract("Splitter test", async (accounts) => {
 
     // testing splitter function
     it("Should not be possible to split if 1 wei or less sent with split", async () =>{
-        const instance = this.splitter;
-
-        expect(instance.performSplit(bobAccount, carolAccount, {from: aliceAccount, value: 1})).to.be.rejected;
-        return expect(instance.performSplit(bobAccount, carolAccount, {from: aliceAccount, value: 0})).to.be.rejected;
+        expect(splitter.performSplit(bobAccount, carolAccount, {from: aliceAccount, value: 1})).to.be.rejected;
+        return expect(splitter.performSplit(bobAccount, carolAccount, {from: aliceAccount, value: 0})).to.be.rejected;
     });
 
-
     it("Should not be possible to split if accounts not correctly specified", async () =>{
-        const instance = this.splitter;
-
-        expect(instance.performSplit('', carolAccount, {from: aliceAccount})).to.be.rejected;
-        return expect(instance.performSplit(bobAccount, '', {from: aliceAccount})).to.be.rejected;
+        expect(splitter.performSplit('', carolAccount, {from: aliceAccount})).to.be.rejected;
+        return expect(splitter.performSplit(bobAccount, '', {from: aliceAccount})).to.be.rejected;
     });
 
     it("Should only be possible for anyone to split ETH to a pair of payees", async () =>{
-        const instance = this.splitter;
-
-        expect(instance.performSplit(
+        expect(splitter.performSplit(
             bobAccount, carolAccount, {from: bobAccount, value: new BN(5)}
         )).to.be.rejected;
-        expect(instance.performSplit(
+        expect(splitter.performSplit(
             aliceAccount, carolAccount, {from: bobAccount, value: new BN(5)}
         )).to.be.fulfilled;
-        expect(instance.performSplit(
+        expect(splitter.performSplit(
             aliceAccount, carolAccount, {from: aliceAccount, value: new BN(5)}
         )).to.be.rejected;
-        return expect(instance.performSplit(
+        return expect(splitter.performSplit(
             bobAccount, carolAccount, {from: aliceAccount, value: new BN(5)}
         )).to.be.fulfilled;
     });
 
     it("Multiple splits so result in adding the split values to the payees allotted amount", async () => {
-        const instance = this.splitter;
-        await instance.performSplit(
+        await splitter.performSplit(
             bobAccount, carolAccount, {from: aliceAccount, value: new BN(5)}
         );
 
-        await instance.performSplit(
+        await splitter.performSplit(
             bobAccount, carolAccount, {from: aliceAccount, value: new BN(6)}
         );
 
-        await instance.performSplit(
+        await splitter.performSplit(
             bobAccount, carolAccount, {from: aliceAccount, value: new BN(10)}
         );
 
-        assert.equal(await instance.payeeBalance.call(aliceAccount, {from: aliceAccount}), 1);
-        return assert.equal(await instance.payeeBalance.call(bobAccount, {from: aliceAccount}), 10);
+        const aliceBalance = await splitter.payeeBalance.call(aliceAccount, {from: aliceAccount});
+        const bobBalance = await splitter.payeeBalance.call(bobAccount, {from: aliceAccount});
+        assert.strictEqual(aliceBalance.toString(), '1');
+        return assert.strictEqual(bobBalance.toString(), '10');
     })
 
     it("All ether should be split equally between the payees", async () => {
-        const instance = this.splitter;
-
         let splitAmount = Math.floor(5 / 2);
         let leftOver = 5 % 2;
 
-        await instance.performSplit(
+        await splitter.performSplit(
             bobAccount, carolAccount, {from: aliceAccount, value: new BN(5)}
         );
 
-        const balanceOfSplitter = web3.eth.getBalance(instance.address);
+        const balanceOfSplitter = web3.eth.getBalance(splitter.address);
 
-        assert.equal(await instance.payeeBalance.call(bobAccount, {from: aliceAccount}), splitAmount);
-        assert.equal(await instance.payeeBalance.call(carolAccount, {from: aliceAccount}), splitAmount);
-        assert.equal(await instance.payeeBalance.call(aliceAccount, {from: aliceAccount}), leftOver);
+
+        const bobBalance = await splitter.payeeBalance.call(bobAccount, {from: aliceAccount});
+        const carolBalance = await splitter.payeeBalance.call(carolAccount, {from: aliceAccount});
+        const aliceBalance = await splitter.payeeBalance.call(aliceAccount, {from: aliceAccount});
+
+        assert.strictEqual(bobBalance.toString(), splitAmount.toString());
+        assert.strictEqual(carolBalance.toString(), splitAmount.toString());
+        assert.strictEqual(aliceBalance.toString(), leftOver.toString());
 
         return expect(balanceOfSplitter).to.eventually.be.a.bignumber.equal(new BN(5));
     });
@@ -201,27 +193,24 @@ contract("Splitter test", async (accounts) => {
     //testing withdraw function
 
     it("Should not be possible for payee to withdraw if there is no ether", async () => {
-        const instance = this.splitter;
-        return expect(instance.withdrawEther(3, {from: bobAccount})).to.be.rejected;
+        return expect(splitter.withdrawEther(3, {from: bobAccount})).to.be.rejected;
     });
 
     it("Should not be possible for payee to withdraw no wei or more than their assigned amount", async () => {
-        const instance = this.splitter;
-        await instance.performSplit(
+        await splitter.performSplit(
             bobAccount, carolAccount, {from: aliceAccount, value: new BN(5)}
         )
-        expect(instance.withdrawEther(0, {from: bobAccount})).to.be.rejected;
-        return expect(instance.withdrawEther(3, {from: bobAccount})).to.be.rejected;
+        expect(splitter.withdrawEther(0, {from: bobAccount})).to.be.rejected;
+        return expect(splitter.withdrawEther(3, {from: bobAccount})).to.be.rejected;
     });
 
     it("Should be possible for a payee to withdraw any positive amount up to and including their allored amount", async () => {
-        const instance = this.splitter;
         const originalBalance = await web3.eth.getBalance(bobAccount);
-        await instance.performSplit(
+        await splitter.performSplit(
             bobAccount, carolAccount, {from: aliceAccount, value: new BN(500)}
         )
 
-        const trx = await instance.withdrawEther(200, {from: bobAccount});
+        const trx = await splitter.withdrawEther(200, {from: bobAccount});
 
         assert(trx.receipt.status, '0x01');
 
@@ -234,12 +223,14 @@ contract("Splitter test", async (accounts) => {
 
         const checkBalance = new BN(originalBalance).sub(gasCost);
 
-        const balanceOfSplitter = web3.eth.getBalance(instance.address);
+        const balanceOfSplitter = web3.eth.getBalance(splitter.address);
 
         const bobBalance = new BN(await web3.eth.getBalance(bobAccount));
 
-        assert.equal(await instance.payeeBalance.call(bobAccount, {from: aliceAccount}), 50);
-        assert.equal(bobBalance.sub(checkBalance), 200);
+        const bobRemSplit = await splitter.payeeBalance.call(bobAccount, {from: aliceAccount});
+
+        assert.strictEqual(bobRemSplit.toString(), '50');
+        assert.strictEqual(bobBalance.sub(checkBalance).toString(), '200');
 
         return expect(balanceOfSplitter).to.eventually.be.a.bignumber.equal(new BN(300));
     });
