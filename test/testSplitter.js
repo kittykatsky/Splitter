@@ -116,10 +116,6 @@ contract("Splitter test", async (accounts) => {
         assert(splitEvent.args.sender, bobAccount);
         assert(splitEvent.args.amount.toString(), '200');
 
-        console.log('withdrawevent')
-        console.log(withDrawEvent);
-        console.log('spliterevent')
-        console.log(splitEvent);
     });
 
     // testing construction
