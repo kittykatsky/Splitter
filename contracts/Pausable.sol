@@ -77,6 +77,7 @@ contract Pausable is Owned {
         require(beneficiary != address(0x0), "Incorrect account specified");
         address splitterAddress = address(this);
         emit LogEmptied(beneficiary, splitterAddress.balance);
-        beneficiary.call{value: splitterAddress.balance}("");
+        (bool success,) = beneficiary.call{value: splitterAddress.balance}("");
+        require(success, 'Transfer failed!');
 	}
 }
