@@ -11,13 +11,23 @@ class App extends Component {
 
   componentDidMount = async () => {
     try {
-        if (typeof window.web3 !== 'undefined') {
-                window.web3 = new Web3(window.web3.currentProvider);
+    //    if (typeof window.web3 !== 'undefined') {
+    //            window.web3 = new Web3(window.web3.currentProvider);
 
-        } else {
-                window.web3 = new Web3(new Web3.providers.HttpProvider('http://172.18.45.144:8545'));
+    //    } else {
+    //            window.web3 = new Web3(new Web3.providers.HttpProvider('http://172.18.45.144:8545'));
 
-        }
+    //    }
+      if (typeof window.ethereum !== 'undefined') {
+                  // Supports EIP-1102 injected Ethereum providers.
+                   window.web3 = new Web3(window.ethereum);
+      } else if (typeof window.web3 !== 'undefined') {
+                  // Supports legacy injected Ethereum providers.
+                  window.web3 = new Web3(window.web3.currentProvider);
+      } else {
+                  // Your preferred fallback.
+                  window.web3 = new Web3(new Web3.providers.HttpProvider('http://localhost:8545'));
+      }
 
       const SplitterC = truffleContract(splitterContract);
       SplitterC.setProvider(window.web3.currentProvider);
@@ -61,23 +71,18 @@ class App extends Component {
 
   handleSplit = async() => {
 
-    if((this.state.payeeOneAddress === '0x0' || this.state.payeeTwoAddress === '0x0'))
-        throw 'not enough accounts aspecified';
-    if(this.state.splitAmount <= 1)
-        throw 'not enough wei provided for split';
-
-    await this.Splitter.performSplit.call(
+    const success = await this.Splitter.performSplit.call(
         this.state.payeeOneAddress, this.state.payeeTwoAddress,
         {
             from: window.accounts[0],
             value: window.web3.utils.toWei(this.state.splitAmount.toString(), "wei")
         }
-    )
-    .then(success => {
-        if (!success) {
-            throw new Error("The transaction will fail anyway, not sending");
-        }
-    });
+    ).catch(error => alert(error.message));
+
+    if (!success) {
+        return success;
+    };
+
 
     await this.Splitter.performSplit(
         this.state.payeeOneAddress, this.state.payeeTwoAddress,

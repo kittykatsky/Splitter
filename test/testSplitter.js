@@ -51,35 +51,36 @@ contract("Splitter test", async (accounts) => {
 
     });
 
-    it("should be possible to kill the contract and return all aloted eth to the owner", async () => {
-        const originalBalanceAlice = await web3.eth.getBalance(aliceAccount);
+    it("Should be possible for the owner to perform a split", async function() {
 
         const trxSplit = await splitter.performSplit(
             bobAccount, carolAccount, {from: aliceAccount, value: new BN(501)}
         );
 
-        assert(trxSplit.receipt.status, '0x01');
-        let gasUsedAlice = new BN(trxSplit.receipt.gasUsed);
+        return assert.strictEqual(trxSplit.receipt.status, true);
+    });
 
-        const trxPause = await splitter.pause({from: aliceAccount});
-        gasUsedAlice = gasUsedAlice.add(new BN(trxPause.receipt.gasUsed));
+    it("should be possible to kill the contract and return all aloted eth to the owner", async () => {
 
-        const trxKill = await splitter.kill({from: aliceAccount});
-        gasUsedAlice = gasUsedAlice.add(new BN(trxKill.receipt.gasUsed));
+        const trxSplit = await splitter.performSplit(
+            bobAccount, carolAccount, {from: aliceAccount, value: new BN(501)}
+        );
+        await splitter.pause({from: aliceAccount});
+        await splitter.kill({from: aliceAccount});
 
+        const originalBalanceAlice = new BN(await web3.eth.getBalance(aliceAccount));
         const trxRet = await splitter.emptyAccount(aliceAccount,{from: aliceAccount});
+        let gasUsedAlice = new BN(trxRet.receipt.gasUsed);
 
-        gasUsedAlice = gasUsedAlice.add(new BN(trxRet.receipt.gasUsed));
         const trxRetTx = await web3.eth.getTransaction(trxRet.tx);
-
         const gasPrice = new BN(trxRetTx.gasPrice);
         const gasCost = gasPrice.mul(gasUsedAlice);
 
-        const checkBalance = new BN(originalBalanceAlice).sub(gasCost);
+        const expectedBalance = new BN(originalBalanceAlice).sub(gasCost);
         const aliceBalance = new BN(await web3.eth.getBalance(aliceAccount));
+        const finalBalance = aliceBalance.sub(expectedBalance).toString()
 
-
-        return assert.strictEqual(aliceBalance.sub(checkBalance).toString(), '0');
+        return assert.strictEqual(finalBalance, '501');
 
     });
 
@@ -94,27 +95,26 @@ contract("Splitter test", async (accounts) => {
 
     //test events
     it("Should emit events after splitting and withdrawal", async () => {
-        await splitter.performSplit(
+        let tx = await splitter.performSplit(
             bobAccount, carolAccount, {from: aliceAccount, value: new BN(501)}
-        ).then(
-            tx => splitEvent = tx.logs[0]
         );
 
-        assert(splitEvent.event, 'LogSplitDoneEvent');
-        assert(splitEvent.args.sender, aliceAccount);
-        assert(splitEvent.args.payee1, bobAccount);
-        assert(splitEvent.args.payee2, carolAccount);
-        assert(splitEvent.args.amount.toString(), '501');
+        const splitEvent = tx.logs[0];
 
-        await splitter.withdrawEther(
+        assert.strictEqual(splitEvent.event, 'LogSplitDoneEvent');
+        assert.strictEqual(splitEvent.args.sender, aliceAccount);
+        assert.strictEqual(splitEvent.args.payee1, bobAccount);
+        assert.strictEqual(splitEvent.args.payee2, carolAccount);
+        assert.strictEqual(splitEvent.args.amount.toString(), '250');
+
+        tx = await splitter.withdrawEther(
             200, {from: bobAccount}
-        ).then(
-            tx => withDrawEvent = tx.logs[0]
         );
 
-        assert(withDrawEvent.event, 'LogEtherWithdrawnEvent');
-        assert(splitEvent.args.sender, bobAccount);
-        assert(splitEvent.args.amount.toString(), '200');
+        const withDrawEvent = tx.logs[0];
+        assert.strictEqual(withDrawEvent.event, 'LogEtherWithdrawnEvent');
+        assert.strictEqual(withDrawEvent.args.sender, bobAccount);
+        assert.strictEqual(withDrawEvent.args.amount.toString(), '200');
 
     });
 
@@ -135,10 +135,10 @@ contract("Splitter test", async (accounts) => {
 
     // testing splitter function
     it("Should not be possible to split if 1 wei or less sent with split", async () =>{
-        expect(splitter.performSplit(
+        await expect(splitter.performSplit(
             bobAccount, carolAccount, {from: aliceAccount, value: 1}
         )).to.be.rejected;
-        return expect(splitter.performSplit(
+        return await expect(splitter.performSplit(
             bobAccount, carolAccount, {from: aliceAccount, value: 0}
         )).to.be.rejected;
     });
@@ -218,15 +218,22 @@ contract("Splitter test", async (accounts) => {
         return expect(splitter.withdrawEther(3, {from: bobAccount})).to.be.rejected;
     });
 
-    it("Should be possible for a payee to withdraw any positive amount up to and including their allored amount", async () => {
-        const originalBalance = await web3.eth.getBalance(bobAccount);
+    it("Should be possible for a payee to withdraw from the Spltter contract after a split", async () => {
+        await splitter.performSplit(
+            bobAccount, carolAccount, {from: aliceAccount, value: new BN(500)}
+        )
+        const trx = await splitter.withdrawEther(200, {from: bobAccount});
+
+        return assert.strictEqual(trx.receipt.status, true);
+    });
+
+    it("Should be possible for a payee to withdraw any positive amount up to and including their allotted amount", async () => {
         await splitter.performSplit(
             bobAccount, carolAccount, {from: aliceAccount, value: new BN(500)}
         )
 
+        const originalBalance = await web3.eth.getBalance(bobAccount);
         const trx = await splitter.withdrawEther(200, {from: bobAccount});
-
-        assert(trx.receipt.status, '0x01');
 
         const gasUsed = trx.receipt.gasUsed;
 
@@ -235,16 +242,17 @@ contract("Splitter test", async (accounts) => {
         const gasPrice = new BN(trx_tx.gasPrice);
         const gasCost = gasPrice.mul(new BN(gasUsed));
 
-        const checkBalance = new BN(originalBalance).sub(gasCost);
-
-        const balanceOfSplitter = web3.eth.getBalance(splitter.address);
-
-        const bobBalance = new BN(await web3.eth.getBalance(bobAccount));
-
         const bobRemSplit = await splitter.payeeBalance.call(bobAccount, {from: aliceAccount});
 
         assert.strictEqual(bobRemSplit.toString(), '50');
-        assert.strictEqual(bobBalance.sub(checkBalance).toString(), '200');
+
+        const checkBalance = new BN(originalBalance).sub(gasCost);
+        const bobBalance = new BN(await web3.eth.getBalance(bobAccount));
+        const bobFinalBalance = bobBalance.sub(checkBalance).toString();
+
+        assert.strictEqual(bobFinalBalance, '200');
+
+        const balanceOfSplitter = web3.eth.getBalance(splitter.address);
 
         return expect(balanceOfSplitter).to.eventually.be.a.bignumber.equal(new BN(300));
     });
