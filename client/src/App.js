@@ -11,13 +11,6 @@ class App extends Component {
 
   componentDidMount = async () => {
     try {
-    //    if (typeof window.web3 !== 'undefined') {
-    //            window.web3 = new Web3(window.web3.currentProvider);
-
-    //    } else {
-    //            window.web3 = new Web3(new Web3.providers.HttpProvider('http://172.18.45.144:8545'));
-
-    //    }
       if (typeof window.ethereum !== 'undefined') {
                   // Supports EIP-1102 injected Ethereum providers.
                    window.web3 = new Web3(window.ethereum);
@@ -32,17 +25,11 @@ class App extends Component {
       const SplitterC = truffleContract(splitterContract);
       SplitterC.setProvider(window.web3.currentProvider);
       this.Splitter = await SplitterC.deployed()
-      console.log(this.Splitter);
-      console.log(window.web3.currentProvider);
-      console.log(await window.web3.eth.getBalance(this.Splitter.address));
 
       this.listenToTransfer();
       this.listenToWithdraw();
 
-      console.log(await window.web3.eth.getAccounts());
-      console.log(await window.web3.eth.accounts);
-      await window.web3.eth.getAccounts()
-            .then(accounts => window.accounts = accounts);
+      window.accounts = await window.web3.eth.getAccounts();
       console.log(window.accounts);
       if(window.accounts.length < 3) throw 'not enough accounts to perform Split';
 
