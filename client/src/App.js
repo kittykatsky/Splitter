@@ -30,7 +30,6 @@ class App extends Component {
       this.listenToWithdraw();
 
       window.accounts = await window.web3.eth.getAccounts();
-      console.log(window.accounts);
       if(window.accounts.length < 3) throw 'not enough accounts to perform Split';
 
       this.setState(
@@ -105,12 +104,11 @@ class App extends Component {
   };
 
   updateAmounts = async () => {
-    let ownerShare = '0';
-    ownerShare = await this.Splitter.payeeBalance(window.accounts[0]);
+    const ownerShare = await this.Splitter.payeeBalance(window.accounts[0]);
     const splitterBalance = await window.web3.eth.getBalance(this.state.splitterAddress);
 
     this.setState({ownerAmount: ownerShare.toString()});
-    this.setState({splitterAmout:splitterBalance.toString()})
+    this.setState({splitterAmout: splitterBalance.toString()})
   }
 
   updatePayeeAmounts = async () => {
